@@ -1,0 +1,30 @@
+# Identifiants de la base : ne doivent jamais partir sur GitHub.
+# Le fichier reste sur le serveur, un déploiement git ne l'écrase pas.
+config.php
+
+# Installeur : ne doit pas être remis en ligne (expose le nom de la base
+# et son utilisateur). Les évolutions de schéma passent par maj.php.
+install.php
+install_v2.sql
+
+# Ancienne version v1, conservée localement seulement.
+archive_v1/
+
+# Photos des lots : données de l'atelier, pas du code.
+uploads/*
+!uploads/.htaccess
+!uploads/entrees/
+!uploads/fabrications/
+uploads/entrees/*
+uploads/fabrications/*
+!uploads/entrees/index.html
+!uploads/fabrications/index.html
+
+# Divers
+*.zip
+*.log
+.DS_Store
+Thumbs.db
+
+# Extraction accidentelle d'une ancienne archive, conservée localement.
+tracabouchercamera/

@@ -1,0 +1,13 @@
+# TracaBoucher
+Options -Indexes
+
+# Le schéma SQL et les archives ne doivent pas être téléchargeables
+<FilesMatch "\.(sql|md|log)$">
+  Require all denied
+</FilesMatch>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set X-Frame-Options "SAMEORIGIN"
+  Header always set Referrer-Policy "same-origin"
+</IfModule>
