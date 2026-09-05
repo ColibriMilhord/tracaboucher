@@ -1,6 +1,6 @@
-# Identifiants de la base : ne doivent jamais partir sur GitHub.
-# Le fichier reste sur le serveur, un déploiement git ne l'écrase pas.
-config.php
+# Identifiants de la base. config.php est versionné mais vide de secrets ;
+# seul config.local.php les porte, et il ne quitte jamais le serveur.
+config.local.php
 
 # Installeur : ne doit pas être remis en ligne (expose le nom de la base
 # et son utilisateur). Les évolutions de schéma passent par maj.php.
