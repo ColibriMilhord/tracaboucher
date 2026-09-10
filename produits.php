@@ -97,9 +97,14 @@ require __DIR__ . '/includes/header.php';
 <div class="flex items-start justify-between gap-3 mb-1">
   <h2 class="font-headline-lg text-2xl font-bold text-primary">Produits</h2>
   <?php if ($produits): ?>
-  <a href="export.php?type=dfs_articles" class="text-sm text-primary font-semibold flex items-center gap-1 shrink-0 mt-1">
-    <span class="material-symbols-outlined text-base">download</span>Fichier balance
-  </a>
+  <div class="flex flex-col items-end gap-1 shrink-0 mt-1">
+    <a href="export.php?type=dfs_articulo" class="text-sm text-primary font-semibold flex items-center gap-1">
+      <span class="material-symbols-outlined text-base">download</span>Fichier balance (format DFS)
+    </a>
+    <a href="export.php?type=dfs_articles" class="text-xs text-on-surface-variant flex items-center gap-1">
+      <span class="material-symbols-outlined text-sm">download</span>Version lisible
+    </a>
+  </div>
   <?php endif ?>
 </div>
 <p class="text-sm text-on-surface-variant mb-6">

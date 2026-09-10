@@ -112,6 +112,51 @@ if ($type === 'sortie' && $id) {
                      liste_ingredients((int)$p['id'])];
     }
 
+// ── Export « natif DFS » : les en-têtes sont les vrais noms de champs de
+//    dat_articulo (schéma sys_datos_dfs). Le mapping DGI devient 1:1.
+//    CLASE_NOMBRE reste en clair : les IdClase DFS n'existent pas encore, DGI
+//    fera la correspondance vers la classe de traçabilité créée dans DFS.
+} elseif ($type === 'dfs_articulo') {
+    $nom = 'dfs_dat_articulo_' . date('Ymd');
+    $lignes[] = ['IdArticulo', 'PLUNumber', 'Descripcion', 'Descripcion1', 'IdTipo',
+                 'PrecioConIVA', 'PrecioEstandar', 'DiasCaducidad', 'EANScanner',
+                 'Texto1', 'Texto2', 'Texto3', 'CLASE_NOMBRE', 'FAMILIA'];
+    foreach ($pdo->query('SELECT * FROM produits WHERE actif=1 ORDER BY plu') as $p) {
+        $id   = (int)ltrim($p['plu'], '0') ?: (int)$p['plu'];
+        $prix = $p['prix_kg'] !== null ? number_format((float)$p['prix_kg'], 2, '.', '') : '';
+        $tb   = taux_bio((int)$p['id']);
+        $ingr = liste_ingredients((int)$p['id']);
+        // Texto2 : mention d'origine pour la viande bovine (règlement 1760/2000).
+        $origine = '';
+        if (($p['classe_traca'] ?? '') === 'viande_bovine') {
+            $ap = origine_lot([
+                'pays_naissance'    => reglage('origine_naissance', 'France'),
+                'pays_elevage'      => reglage('origine_elevage', 'France'),
+                'pays_abattage'     => reglage('origine_abattage', 'France'),
+                'agrement_abattoir' => reglage('agrement_abattoir'),
+            ]);
+            $origine = trim(implode(' ', $ap['lignes']) . ' ' . mention_decoupe());
+        }
+        // Texto3 : mention bio, seulement si le seuil est atteint.
+        $bio = $tb['mention'] === 'bio'
+             ? 'Agriculture biologique - ' . reglage('code_certificateur') . ' - ' . reglage('origine_agricole', 'Agriculture France')
+             : '';
+        $lignes[] = [
+            $id, $id,
+            mb_substr($p['libelle'], 0, 100),
+            mb_substr($p['libelle_court'] ?: $p['libelle'], 0, 100),
+            1,                                   // 1 = article au poids
+            $prix, $prix,
+            $p['dlc_jours'] ?? '',
+            $p['ean13'] ?? '',
+            mb_substr($ingr, 0, 250),
+            mb_substr($origine, 0, 250),
+            mb_substr($bio, 0, 250),
+            $p['classe_traca'] ?? '',
+            $p['famille'] ?? '',
+        ];
+    }
+
 } elseif ($type === 'dfs_lots') {
     // Par défaut les fabrications du jour ; sinon la période demandée.
     $depuis = preg_match('/^\d{4}-\d{2}-\d{2}$/', $_GET['depuis'] ?? '') ? $_GET['depuis'] : date('Y-m-d');
