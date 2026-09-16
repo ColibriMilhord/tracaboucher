@@ -54,6 +54,26 @@ require __DIR__ . '/includes/header.php';
   Comment envoyer vos produits vers l'étiqueteuse Dibal, étape par étape.
 </p>
 
+<?php
+// État de la dernière synchronisation remontée par l'agent (pont automatique)
+$statut = json_decode(reglage('agent_statut') ?: '', true);
+if (is_array($statut)):
+    $ok = ($statut['etat'] ?? '') === 'ok';
+    $quand = !empty($statut['le']) ? date('d/m/Y à H:i', strtotime($statut['le'])) : '—';
+?>
+<div class="rounded-xl p-4 mb-6 <?= $ok ? 'bg-primary-container text-on-primary-container' : 'bg-error-container text-on-error-container' ?>">
+  <div class="flex items-center gap-2 font-bold">
+    <span class="material-symbols-outlined"><?= $ok ? 'cloud_done' : 'cloud_off' ?></span>
+    Synchronisation automatique — dernière : <?= h($quand) ?>
+  </div>
+  <div class="text-sm mt-1">
+    <?= $ok
+        ? 'OK — ' . ((int)($statut['nb'] ?? 0)) . ' produit(s) transmis à la balance.'
+        : 'Échec — ' . h($statut['message'] ?? 'raison inconnue') ?>
+  </div>
+</div>
+<?php endif ?>
+
 <!-- 1. Où j'en suis -->
 <section class="bg-surface rounded-xl border border-outline-variant p-5 mb-6">
   <h3 class="font-headline-md font-bold mb-4">1. Vérifier que tout est prêt</h3>

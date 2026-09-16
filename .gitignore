@@ -32,3 +32,5 @@ tracabouchercamera/
 # Agent balance : config réelle (jeton, mot de passe) et journaux — jamais versionnés
 agent-balance/config.ps1
 agent-balance/*.log
+agent-balance/agent-statut.txt
+agent-balance/dernier-hash.txt

@@ -1,108 +1,115 @@
 # ============================================================
 #  Agent balance TracaBoucher
 #  Recupere les produits depuis l'application web et depose le fichier
-#  la ou DFS (DGI/RGI) va le lire. Sauvegarde avant chaque operation.
-#  NE MODIFIE JAMAIS directement la base de DFS : depot de fichier seulement.
+#  dans le dossier surveille par RGI (qui l'envoie a la balance tout seul).
+#  - N'agit QUE si quelque chose a change depuis la derniere fois.
+#  - Ne remplace le fichier que si le telechargement est valide.
+#  - Sauvegarde avant, et renvoie le resultat (OK/KO) a l'application.
+#  - N'ecrit JAMAIS directement dans la base de DFS.
 #
 #  Lancement manuel :  powershell -ExecutionPolicy Bypass -File agent-balance.ps1
-#  Lancement planifie : voir installer-tache.ps1
+#  (Messages en ASCII volontairement, pour Windows PowerShell 5.1.)
 # ============================================================
 [CmdletBinding()]
 param()
 
 $ErrorActionPreference = 'Stop'
-$racine = Split-Path -Parent $MyInvocation.MyCommand.Path
+$racine     = Split-Path -Parent $MyInvocation.MyCommand.Path
+$logFile    = Join-Path $racine 'agent-balance.log'
+$statutFile = Join-Path $racine 'agent-statut.txt'
+$hashFile   = Join-Path $racine 'dernier-hash.txt'
 
-# --- Journal -------------------------------------------------
-$logFile = Join-Path $racine 'agent-balance.log'
 function Journal([string]$niveau, [string]$msg) {
     $ligne = ('{0}  [{1}]  {2}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $niveau, $msg)
-    Add-Content -Path $logFile -Value $ligne -Encoding UTF8
+    try { Add-Content -Path $logFile -Value $ligne -Encoding UTF8 } catch {}
     Write-Host $ligne
 }
 
+function Resultat([string]$etat, [string]$message, [int]$nb) {
+    $suffixe = ''
+    if ($nb -gt 0) { $suffixe = " ($nb produits)" }
+    $txt = ('{0}  {1}  {2}{3}' -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss'), $etat.ToUpper(), $message, $suffixe)
+    try { Set-Content -Path $statutFile -Value $txt -Encoding UTF8 } catch {}
+    if ($script:PingUrl) {
+        try {
+            Invoke-WebRequest -Uri $script:PingUrl -Method Post -TimeoutSec 30 -UseBasicParsing -Body @{
+                token = $script:Token; etat = $etat; message = $message; nb = $nb
+            } | Out-Null
+        } catch { Journal 'ATTENTION' "Envoi de l'etat a l'application impossible (sans consequence)." }
+    }
+}
+
+$script:PingUrl = $null
+$script:Token   = $null
+
 try {
-    # --- Configuration ---------------------------------------
     $configFile = Join-Path $racine 'config.ps1'
-    if (-not (Test-Path $configFile)) {
-        throw "config.ps1 introuvable. Copiez config.exemple.ps1 en config.ps1 et renseignez-le."
-    }
+    if (-not (Test-Path $configFile)) { throw "config.ps1 introuvable. Lancez installer.bat." }
     . $configFile
-    if (-not $Config -or -not $Config.Url -or $Config.Url -match 'COLLEZ_LE_JETON') {
-        throw "config.ps1 incomplet : renseignez l'URL avec le jeton."
-    }
+    if (-not $Config -or -not $Config.Url -or $Config.Url -match 'COLLEZ_LE_JETON') { throw "config.ps1 incomplet : URL/jeton manquant." }
 
-    Journal 'INFO' 'Demarrage.'
+    if ($Config.Url -match 'token=([0-9a-fA-F]+)') { $script:Token = $matches[1] }
+    if ($Config.PingUrl) { $script:PingUrl = $Config.PingUrl }
+    elseif ($Config.Url -match '^(.*)/export\.php') { $script:PingUrl = $matches[1] + '/agent_ping.php' }
 
-    # TLS 1.2 pour Windows PowerShell 5.1
     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-    # --- Dossiers --------------------------------------------
     $destDir = Split-Path -Parent $Config.Destination
     foreach ($d in @($destDir, $Config.Backups)) {
         if ($d -and -not (Test-Path $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
     }
-    $horo = Get-Date -Format 'yyyyMMdd_HHmmss'
 
-    # --- 1. Telechargement dans un fichier temporaire ---------
-    $tmp = Join-Path $env:TEMP ("traca_articles_{0}.csv" -f $horo)
-    Journal 'INFO' ("Telechargement depuis {0}" -f ($Config.Url -replace 'token=[^&]+', 'token=***'))
+    $tmp = Join-Path $env:TEMP ("traca_{0}.csv" -f (Get-Date -Format 'yyyyMMddHHmmss'))
     Invoke-WebRequest -Uri $Config.Url -OutFile $tmp -UseBasicParsing -TimeoutSec 60
 
-    # --- 2. Validation : c'est bien notre export, pas une page d'erreur ---
-    if (-not (Test-Path $tmp) -or (Get-Item $tmp).Length -eq 0) {
-        throw "Fichier telecharge vide."
-    }
-    $premiere = (Get-Content -Path $tmp -TotalCount 1 -Encoding UTF8) -replace "\xEF\xBB\xBF", ''
+    if (-not (Test-Path $tmp) -or (Get-Item $tmp).Length -eq 0) { throw "Telechargement vide." }
+    $premiere = Get-Content -Path $tmp -TotalCount 1 -Encoding UTF8
     if ($premiere -notmatch 'IdArticulo' -or $premiere -notmatch 'EANScanner') {
-        throw "Contenu inattendu (pas l'en-tete dat_articulo). Jeton invalide ou URL erronee ? Fichier NON remplace."
+        throw "Reponse inattendue (pas l'export balance). Jeton invalide ou site indisponible."
     }
-    $nbLignes = (Get-Content -Path $tmp -Encoding UTF8 | Measure-Object -Line).Lines
-    Journal 'INFO' ("Fichier valide : {0} ligne(s)." -f $nbLignes)
+    $contenu  = Get-Content -Path $tmp -Raw -Encoding UTF8
+    $nbLignes = ([regex]::Matches($contenu, "`n")).Count
+    $hash     = (Get-FileHash -Path $tmp -Algorithm SHA256).Hash
 
-    # --- 3. Sauvegarde de l'ancien fichier de destination -----
+    $ancien = ''
+    if (Test-Path $hashFile) { $ancien = (Get-Content $hashFile -Raw).Trim() }
+    if ($hash -eq $ancien) {
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+        Journal 'INFO' 'Aucun changement depuis la derniere synchro.'
+        exit 0
+    }
+
+    Journal 'INFO' ("Changement detecte : {0} produit(s) a transmettre." -f $nbLignes)
+    $horo = Get-Date -Format 'yyyyMMdd_HHmmss'
+
     if (Test-Path $Config.Destination) {
-        $bkFichier = Join-Path $Config.Backups ("articles_{0}.csv" -f $horo)
-        Copy-Item -Path $Config.Destination -Destination $bkFichier -Force
-        Journal 'INFO' ("Ancien fichier sauvegarde : {0}" -f $bkFichier)
+        Copy-Item -Path $Config.Destination -Destination (Join-Path $Config.Backups ("articles_{0}.csv" -f $horo)) -Force
     }
 
-    # --- 4. Sauvegarde (dump) de la base DFS, en lecture seule ----
     if ($Config.DumpAvant -and $Config.MysqlDump -and (Test-Path $Config.MysqlDump)) {
-        $dump = Join-Path $Config.Backups ("sys_datos_dfs_{0}.sql" -f $horo)
-        Journal 'INFO' 'Sauvegarde de la base DFS (mysqldump, lecture seule).'
-        $args = @(
-            "--host=$($Config.DbHost)", "--port=$($Config.DbPort)",
-            "--user=$($Config.DbUser)", "--password=$($Config.DbPass)",
-            '--single-transaction', '--default-character-set=utf8', $Config.DbName
-        )
-        & $Config.MysqlDump @args | Out-File -FilePath $dump -Encoding UTF8
-        if ($LASTEXITCODE -ne 0) {
-            Journal 'ATTENTION' "mysqldump a renvoye le code $LASTEXITCODE. Sauvegarde base ignoree, on continue."
-        } else {
-            Journal 'INFO' ("Base sauvegardee : {0}" -f $dump)
-        }
-    } elseif ($Config.DumpAvant) {
-        Journal 'ATTENTION' 'mysqldump introuvable : sauvegarde de la base ignoree.'
+        $dumpFile = Join-Path $Config.Backups ("sys_datos_dfs_{0}.sql" -f $horo)
+        $argsDump = @("--host=$($Config.DbHost)", "--port=$($Config.DbPort)", "--user=$($Config.DbUser)",
+                      "--password=$($Config.DbPass)", '--single-transaction', '--default-character-set=utf8', $Config.DbName)
+        & $Config.MysqlDump @argsDump | Out-File -FilePath $dumpFile -Encoding UTF8
+        if ($LASTEXITCODE -eq 0) { Journal 'INFO' 'Base DFS sauvegardee.' }
+        else { Journal 'ATTENTION' ("mysqldump code {0} : sauvegarde base ignoree." -f $LASTEXITCODE) }
     }
 
-    # --- 5. Mise en place du nouveau fichier pour DFS ---------
     Copy-Item -Path $tmp -Destination $Config.Destination -Force
-    Journal 'INFO' ("Fichier depose pour DFS : {0}" -f $Config.Destination)
+    Set-Content -Path $hashFile -Value $hash -Encoding ascii
+    Remove-Item $tmp -Force -ErrorAction SilentlyContinue
 
-    # --- 6. Menage des vieilles sauvegardes ------------------
     if ($Config.GarderSauvegardes -gt 0 -and (Test-Path $Config.Backups)) {
-        Get-ChildItem -Path $Config.Backups -File |
-            Sort-Object LastWriteTime -Descending |
-            Select-Object -Skip $Config.GarderSauvegardes |
-            Remove-Item -Force -ErrorAction SilentlyContinue
+        Get-ChildItem -Path $Config.Backups -File | Sort-Object LastWriteTime -Descending |
+            Select-Object -Skip $Config.GarderSauvegardes | Remove-Item -Force -ErrorAction SilentlyContinue
     }
 
-    Remove-Item $tmp -Force -ErrorAction SilentlyContinue
-    Journal 'OK' 'Termine avec succes.'
+    Journal 'OK' ("Fichier depose pour la balance : {0}" -f $Config.Destination)
+    Resultat 'ok' 'Produits transmis a la balance.' $nbLignes
     exit 0
 }
 catch {
     Journal 'ERREUR' $_.Exception.Message
+    Resultat 'ko' $_.Exception.Message 0
     exit 1
 }

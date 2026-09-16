@@ -1,23 +1,24 @@
 # ============================================================
 #  Agent balance TracaBoucher - configuration
-#  Copiez ce fichier en "config.ps1" et adaptez les valeurs.
+#  Normalement rempli automatiquement par installer.bat.
 #  config.ps1 contient le jeton : ne le partagez pas.
 # ============================================================
 
 $Config = @{
 
-    # --- Source : l'URL affichee dans l'appli (Parametres > Pont automatique) ---
+    # --- URL affichée dans l'appli (Paramètres > Pont automatique) ---
     Url = 'https://causselot.fr/tracabilite/export.php?type=dfs_articulo&token=COLLEZ_LE_JETON_ICI'
 
-    # --- Destination : le fichier que DGI/RGI de DFS va lire ---
-    #     Demandez a votre installateur le dossier surveille par DFS.
-    Destination = 'C:\DibalImport\articles.csv'
+    # --- Fichier lu par RGI (le "robot" de DFS surveille ce dossier) ---
+    #     Nom par défaut attendu par DFS : ARTICLES.TXT
+    #     Demandez le dossier surveillé à votre installateur Dibal.
+    Destination = 'C:\DibalImport\ARTICLES.TXT'
 
-    # --- Sauvegardes : anciens fichiers + dumps de la base, horodates ---
+    # --- Sauvegardes horodatées (anciens fichiers + base) ---
     Backups = 'C:\DibalImport\backups'
 
-    # --- Sauvegarde de la base DFS avant chaque import (fortement conseille) ---
-    #     Lecture seule : ne modifie jamais la base, en fait juste une copie.
+    # --- Sauvegarde de la base DFS avant chaque envoi (conseillé) ---
+    #     Lecture seule : ne modifie jamais la base.
     DumpAvant = $true
     MysqlDump = 'C:\Program Files (x86)\MySQL\MySQL Server 5.0\bin\mysqldump.exe'
     DbHost    = 'localhost'
@@ -26,6 +27,9 @@ $Config = @{
     DbUser    = 'root'
     DbPass    = 'MOT_DE_PASSE_MYSQL_DFS'
 
-    # --- Combien de sauvegardes conserver (les plus anciennes sont effacees) ---
+    # --- Nombre de sauvegardes à conserver ---
     GarderSauvegardes = 30
+
+    # --- URL de retour d'état (laisser vide : déduite de Url) ---
+    PingUrl = ''
 }
