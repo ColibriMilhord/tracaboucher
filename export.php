@@ -6,11 +6,26 @@
 //  export.php?type=registre_fabrications → registre complet des fabrications
 // ============================================================
 require_once __DIR__ . '/includes/auth.php';
-$moi = exiger_connexion();
 
-$pdo  = db();
 $type = $_GET['type'] ?? '';
 $id   = (int)($_GET['id'] ?? 0);
+
+// L'agent local (PC de la balance) télécharge les exports « balance » sans
+// session navigateur, via un jeton secret partagé (réglage token_export).
+// Réservé aux exports destinés à DFS, jamais aux registres nominatifs.
+$exports_balance = ['dfs_articulo', 'dfs_articles', 'dfs_lots'];
+$jeton_attendu   = reglage('token_export');
+$jeton_fourni    = (string)($_GET['token'] ?? '');
+$acces_jeton = in_array($type, $exports_balance, true)
+            && $jeton_attendu !== ''
+            && $jeton_fourni !== ''
+            && hash_equals($jeton_attendu, $jeton_fourni);
+
+if (!$acces_jeton) {
+    $moi = exiger_connexion();
+}
+
+$pdo = db();
 
 $nom = 'export';
 $lignes = [];

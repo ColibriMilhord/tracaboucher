@@ -23,6 +23,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_reglages'])) {
     exit;
 }
 
+// ── Jeton pour l'agent local (pont vers la balance)
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['gen_token'])) {
+    $jeton = bin2hex(random_bytes(24));
+    $pdo->prepare('INSERT INTO reglages (cle, valeur) VALUES (?,?) ON DUPLICATE KEY UPDATE valeur=VALUES(valeur)')
+        ->execute(['token_export', $jeton]);
+    header('Location: parametres.php?msg=token');
+    exit;
+}
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['revoke_token'])) {
+    $pdo->prepare("UPDATE reglages SET valeur='' WHERE cle='token_export'")->execute();
+    header('Location: parametres.php?msg=token_off');
+    exit;
+}
+
 // ── Ajout / modification d'un type
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_type'])) {
     $tid     = (int)($_POST['type_id'] ?? 0);
@@ -56,7 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_type'])) {
     }
 }
 
-$flashes = ['reglages' => 'Réglages enregistrés.', 'type' => 'Type de matière enregistré.'];
+$flashes = ['reglages' => 'Réglages enregistrés.', 'type' => 'Type de matière enregistré.',
+            'token' => 'Nouveau jeton généré.', 'token_off' => 'Jeton révoqué.'];
 $ok = $flashes[$_GET['msg'] ?? ''] ?? '';
 
 $types  = $pdo->query('SELECT * FROM types_matiere ORDER BY ordre, libelle')->fetchAll();
@@ -244,6 +259,46 @@ require __DIR__ . '/includes/header.php';
     <a class="text-primary underline font-semibold" href="maj.php">Mise à jour de la base</a>
     — à lancer après chaque livraison de nouvelle version.
   </p>
+</section>
+
+<!-- Pont automatique : jeton pour l'agent installé sur le PC de la balance -->
+<?php
+$token = reglage('token_export');
+$base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http')
+          . '://' . ($_SERVER['HTTP_HOST'] ?? 'causselot.fr')
+          . rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/tracabilite/'), '/\\');
+?>
+<section class="bg-surface rounded-xl border border-outline-variant p-5 mt-6">
+  <h3 class="font-headline-md font-bold mb-1">Pont automatique vers la balance</h3>
+  <p class="text-xs text-on-surface-variant mb-4">
+    Permet à l'agent installé sur le PC de l'atelier de récupérer les produits tout seul,
+    sans connexion manuelle. Ne partagez ce jeton qu'avec cet agent.
+  </p>
+
+  <?php if ($token === ''): ?>
+  <form method="post">
+    <button name="gen_token" value="1" class="bg-primary text-on-primary rounded-full px-6 py-3 font-bold text-sm">
+      Générer un jeton
+    </button>
+  </form>
+  <?php else: ?>
+  <div class="bg-surface-container-low rounded-xl p-3 mb-3">
+    <div class="text-xs text-on-surface-variant mb-1">Jeton</div>
+    <code class="text-xs break-all"><?= h($token) ?></code>
+  </div>
+  <div class="bg-surface-container-low rounded-xl p-3 mb-3">
+    <div class="text-xs text-on-surface-variant mb-1">URL de récupération (à configurer dans l'agent)</div>
+    <code class="text-xs break-all"><?= h($base_url) ?>/export.php?type=dfs_articulo&amp;token=<?= h($token) ?></code>
+  </div>
+  <div class="flex gap-2">
+    <form method="post" onsubmit="return confirm('Générer un nouveau jeton ? L\'ancien cessera de fonctionner.')">
+      <button name="gen_token" value="1" class="bg-surface-container-high rounded-full px-5 py-2 font-semibold text-sm">Régénérer</button>
+    </form>
+    <form method="post" onsubmit="return confirm('Révoquer le jeton ? L\'agent ne pourra plus récupérer les données.')">
+      <button name="revoke_token" value="1" class="text-error rounded-full px-5 py-2 font-semibold text-sm">Révoquer</button>
+    </form>
+  </div>
+  <?php endif ?>
 </section>
 
 <?php require __DIR__ . '/includes/footer.php'; ?>

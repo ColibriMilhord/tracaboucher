@@ -28,3 +28,7 @@ Thumbs.db
 
 # Extraction accidentelle d'une ancienne archive, conservée localement.
 tracabouchercamera/
+
+# Agent balance : config réelle (jeton, mot de passe) et journaux — jamais versionnés
+agent-balance/config.ps1
+agent-balance/*.log
