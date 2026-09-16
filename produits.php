@@ -115,11 +115,18 @@ require __DIR__ . '/includes/header.php';
 <?php if ($msg): ?><div class="bg-error-container text-on-error-container rounded-xl px-4 py-3 mb-4 text-sm"><?= h($msg) ?></div><?php endif ?>
 <?php if ($ok):  ?><div class="bg-primary-container text-on-primary-container rounded-xl px-4 py-3 mb-4 text-sm"><?= h($ok) ?></div><?php endif ?>
 
-<?php if ($produits): ?>
+<?php if ($produits && !$edit): ?>
 <div class="bg-surface rounded-xl border border-outline-variant p-5 mb-6">
-  <div class="flex flex-col gap-2">
-    <?php foreach ($produits as $p): ?>
-    <div class="flex items-center gap-3 py-2 border-b border-outline-variant last:border-0 <?= $p['actif'] ? '' : 'opacity-40' ?>">
+  <div class="flex items-center gap-2 mb-3">
+    <span class="material-symbols-outlined text-on-surface-variant">search</span>
+    <input type="text" id="rech-produit" placeholder="Filtrer (nom, PLU, famille…)"
+           class="flex-1 rounded-full border-outline-variant text-sm">
+    <span class="text-xs text-on-surface-variant shrink-0"><?= count($produits) ?> produits</span>
+  </div>
+  <div class="flex flex-col gap-2" id="liste-produits">
+    <?php foreach ($produits as $p): $tb = taux_bio((int)$p['id']); ?>
+    <div class="prod-ligne flex items-center gap-3 py-2 border-b border-outline-variant last:border-0 <?= $p['actif'] ? '' : 'opacity-40' ?>"
+         data-cherche="<?= h(mb_strtolower($p['plu'].' '.$p['libelle'].' '.$p['famille'].' '.$p['ean13'])) ?>">
       <span class="lot-badge text-xs font-bold bg-surface-container-high px-2 py-1 rounded shrink-0"><?= h($p['plu']) ?></span>
       <div class="flex-1 min-w-0">
         <div class="text-sm font-semibold truncate"><?= h($p['libelle']) ?></div>
@@ -127,28 +134,48 @@ require __DIR__ . '/includes/header.php';
           <?= h($p['ean13']) ?><?= $p['famille'] ? ' · ' . h($p['famille']) : '' ?><?= $p['actif'] ? '' : ' · inactif' ?>
         </div>
       </div>
-      <?php $tb = taux_bio((int)$p['id']); ?>
       <span class="text-xs shrink-0 px-2 py-1 rounded <?= $tb['mention'] === 'bio' ? 'bg-primary-container text-on-primary-container font-semibold' : 'text-on-surface-variant' ?>">
         <?= $tb['taux'] === null ? 'composition à faire' : number_format($tb['taux'], 1, ',', ' ') . ' % bio' ?>
       </span>
       <a href="recette.php?produit_id=<?= (int)$p['id'] ?>" title="Composition"
          class="material-symbols-outlined text-primary min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center active:bg-surface-container">receipt_long</a>
-      <a href="produits.php?action=modifier&id=<?= (int)$p['id'] ?>"
+      <a href="produits.php?action=modifier&id=<?= (int)$p['id'] ?>" title="Modifier"
          class="material-symbols-outlined text-primary min-w-[48px] min-h-[48px] rounded-full flex items-center justify-center active:bg-surface-container">edit</a>
     </div>
     <?php endforeach ?>
   </div>
+  <p id="rech-vide" class="hidden text-sm text-on-surface-variant text-center py-4">Aucun produit ne correspond.</p>
 </div>
+
+<script>
+(function () {
+  var r = document.getElementById('rech-produit');
+  if (!r) return;
+  r.addEventListener('input', function () {
+    var q = r.value.trim().toLowerCase(), vus = 0;
+    document.querySelectorAll('#liste-produits .prod-ligne').forEach(function (l) {
+      var ok = !q || l.dataset.cherche.indexOf(q) !== -1;
+      l.hidden = !ok; if (ok) vus++;
+    });
+    document.getElementById('rech-vide').classList.toggle('hidden', vus > 0);
+  });
+})();
+</script>
 <?php endif ?>
 
 <div class="bg-surface rounded-xl border border-outline-variant p-5">
+  <?php if ($edit): ?>
+  <a href="produits.php" class="inline-flex items-center gap-1 text-sm text-primary font-semibold mb-3">
+    <span class="material-symbols-outlined">arrow_back</span>Retour à la liste
+  </a>
+  <?php endif ?>
   <h3 class="font-headline-md font-bold mb-4"><?= $edit ? 'Modifier « ' . h($edit['libelle']) . ' »' : 'Ajouter un produit' ?></h3>
   <form method="post" class="grid sm:grid-cols-2 gap-4">
     <input type="hidden" name="id" value="<?= (int)($edit['id'] ?? 0) ?>">
 
     <div class="sm:col-span-2">
       <label class="block text-sm font-semibold mb-1">Libellé <span class="text-error">*</span></label>
-      <input type="text" name="libelle" required value="<?= h($edit['libelle'] ?? '') ?>"
+      <input type="text" name="libelle" required value="<?= h($edit['libelle'] ?? '') ?>" <?= $edit ? 'autofocus' : '' ?>
              placeholder="ex : Merguez de bœuf" class="w-full rounded-xl border-outline-variant">
     </div>
 

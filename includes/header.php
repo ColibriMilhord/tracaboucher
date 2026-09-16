@@ -83,6 +83,8 @@
   </a>
   <div class="flex items-center gap-1">
     <?php if (($moi['role'] ?? '') === 'admin'): ?>
+    <a href="guide.php" title="Assistant balance" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">help</a>
+    <a href="produits.php" title="Produits" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">inventory</a>
     <a href="parametres.php" title="Paramètres" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">settings</a>
     <a href="utilisateurs.php" title="Utilisateurs" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">group</a>
     <?php endif ?>
@@ -103,6 +105,7 @@
       ];
       if (($moi['role'] ?? '') === 'admin') {
         $liens[] = ['produits', 'produits.php', 'inventory', 'Produits'];
+        $liens[] = ['guide', 'guide.php', 'help', 'Assistant balance'];
       }
       foreach ($liens as [$k,$url,$icone,$lib]):
         $on = $page_active === $k;
