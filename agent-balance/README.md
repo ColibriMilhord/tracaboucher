@@ -19,26 +19,28 @@ fois.
 
 ## Installation (une seule fois)
 
-1. Copiez le dossier `agent-balance` sur le PC de l'atelier, par ex. dans
-   `C:\TracaBoucher\agent-balance`.
-2. Dans l'application web : **Paramètres → Pont automatique → Générer un jeton**.
-   Copiez l'**URL de récupération** affichée.
-3. Copiez `config.exemple.ps1` en **`config.ps1`** et renseignez :
-   - `Url` : collez l'URL récupérée (elle contient le jeton) ;
-   - `Destination` : le fichier lu par DFS — **demandez le dossier à l'installateur** ;
-   - les paramètres `Db*` si vous voulez la sauvegarde de la base (conseillé).
-4. Test manuel, dans une fenêtre PowerShell ouverte dans ce dossier :
+1. Copiez le dossier `agent-balance` sur le PC de l'atelier (celui où est DFS),
+   par ex. dans `C:\TracaBoucher\agent-balance`.
+2. Dans l'application web : **Paramètres → Pont automatique → Générer un jeton**,
+   et copiez la ligne **URL de récupération**.
+3. **Double-cliquez sur `installer.bat`** (idéalement clic droit → *Exécuter en tant
+   qu'administrateur*, pour créer la tâche planifiée). Il pose trois questions :
+   - collez l'**URL de récupération** ;
+   - indiquez le **dossier surveillé par DFS** (demandez-le à votre installateur) ;
+   - le **mot de passe MySQL** de DFS pour la sauvegarde (facultatif).
 
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File .\agent-balance.ps1
-   ```
+   Il configure tout, planifie l'agent **toutes les 2 minutes**, fait un test et
+   affiche **OK**, ou la **raison** en cas de problème.
 
-   Vérifiez `agent-balance.log` : il doit se terminer par `[OK] Termine avec succes.`
-5. Pour l'automatiser (toutes les 30 min), dans un PowerShell **administrateur** :
+L'agent tourne ensuite tout seul : dès que vous modifiez un prix dans l'appli, il
+le détecte à la synchro suivante et dépose le fichier que DFS (RGI) envoie à la
+balance. Le résultat s'affiche aussi dans l'appli (**Assistant balance**).
 
-   ```powershell
-   powershell -ExecutionPolicy Bypass -File .\installer-tache.ps1
-   ```
+### En cas de besoin, à la main
+
+- Relancer une fois : `powershell -ExecutionPolicy Bypass -File .\agent-balance.ps1`
+- (Re)planifier : `powershell -ExecutionPolicy Bypass -File .\installer-tache.ps1 -IntervalleMinutes 2`
+- La config générée est dans `config.ps1` (modèle : `config.exemple.ps1`).
 
 ## Sécurité
 
