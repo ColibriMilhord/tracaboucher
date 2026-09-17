@@ -19,8 +19,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $premier && isset($_POST['creer_adm
     } elseif ($e = verifier_force_mdp($mdp)) {
         $msg = $e;
     } else {
-        db()->prepare('INSERT INTO utilisateurs (identifiant, nom, mot_de_passe, role) VALUES (?,?,?,?)')
-            ->execute([$ident, $nom, password_hash($mdp, PASSWORD_DEFAULT), 'admin']);
+        // email est repris de l'identifiant : la colonne est historiquement
+        // obligatoire côté app.causselot.fr (ancien schéma partagé).
+        db()->prepare('INSERT INTO ' . DB_NAME_CAUSSELOT . '.utilisateurs (identifiant, nom, email, mot_de_passe, role) VALUES (?,?,?,?,?)')
+            ->execute([$ident, $nom, $ident, password_hash($mdp, PASSWORD_DEFAULT), 'admin']);
         connecter($ident, $mdp);
         header('Location: index.php');
         exit;

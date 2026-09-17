@@ -107,6 +107,9 @@
         $liens[] = ['produits', 'produits.php', 'inventory', 'Produits'];
         $liens[] = ['guide', 'guide.php', 'help', 'Assistant balance'];
       }
+      if (defined('CAUSSELOT_URL') && CAUSSELOT_URL !== '') {
+        $liens[] = ['causselot', CAUSSELOT_URL, 'storefront', 'Portail CAUSSELOT'];
+      }
       foreach ($liens as [$k,$url,$icone,$lib]):
         $on = $page_active === $k;
       ?>
