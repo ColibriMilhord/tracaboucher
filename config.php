@@ -18,6 +18,12 @@ defined('DB_NAME') || define('DB_NAME', '');
 defined('DB_USER') || define('DB_USER', '');
 defined('DB_PASS') || define('DB_PASS', '');
 
+// Base partagée des comptes (connexion unique avec app.causselot.fr).
+// Par défaut identique à DB_NAME (comportement inchangé tant que
+// config.local.php ne définit pas explicitement la base causselot).
+defined('DB_NAME_CAUSSELOT') || define('DB_NAME_CAUSSELOT', DB_NAME);
+defined('CAUSSELOT_URL') || define('CAUSSELOT_URL', '');
+
 defined('UPLOAD_DIR') || define('UPLOAD_DIR', __DIR__ . '/uploads/');
 defined('UPLOAD_URL') || define('UPLOAD_URL', 'uploads/');
 

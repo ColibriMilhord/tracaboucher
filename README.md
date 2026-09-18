@@ -14,7 +14,37 @@ de l'atelier : **Entrée** (réception matières premières) et **Fabrication** 
 5. Ouvrir `login.php` → créer le compte **administrateur** (le premier compte créé
    est automatiquement administrateur).
 6. **Supprimer `install.php` et `install_v2.sql` du serveur.**
-7. Créer les comptes des opérateurs dans **Utilisateurs** (icône groupe, en haut).
+7. Créer les comptes des opérateurs dans **Utilisateurs** (icône groupe, en haut) —
+   ou, une fois la connexion unique ci-dessous en place, depuis app.causselot.fr.
+
+## Connexion unique (SSO) avec CAUSSELOT
+
+Depuis la refonte de `app.causselot.fr`, les comptes et les sessions sont
+partagés entre les deux applications : se connecter une fois sur
+`app.causselot.fr` suffit pour être déjà connecté ici, et inversement.
+
+1. **hPanel > Bases de données MySQL** : associer l'utilisateur MySQL de
+   TraçaBoucher (`DB_USER` ci-dessus) à la base utilisée par
+   `app.causselot.fr` (« Gérer les utilisateurs » sur cette base).
+2. Migrer les comptes déjà créés ici (`utilisateurs` local) vers la table
+   `utilisateurs` de la base causselot (mêmes colonnes `identifiant`,
+   `nom`, `mot_de_passe` — le hash se recopie tel quel —, `role` = `admin`
+   si c'était `admin`, sinon `atelier`, `actif`).
+3. Dans `config.local.php`, définir `DB_NAME_CAUSSELOT` (nom de la base
+   causselot) et `CAUSSELOT_URL` (`https://app.causselot.fr/`) — voir
+   `config.example.php`.
+4. **Paramètres > Connexion unique > Reprise des comptes** : recopie dans
+   la base partagée les comptes qui n'existaient que dans TraçaBoucher,
+   en conservant leurs mots de passe. Sans cette étape, leurs titulaires
+   ne peuvent plus se connecter. La page est relançable et n'écrase
+   jamais un identifiant déjà présent.
+
+Une fois ces étapes faites, `includes/auth.php` bascule seul sur les
+comptes et les sessions partagés (repli automatique sur le comportement
+précédent tant que ce n'est pas fait, donc rien ne casse entre-temps), et
+**Utilisateurs** redirige vers app.causselot.fr, désormais seul endroit où
+créer ou modifier un compte (les rôles y sont `admin`/`atelier`/`client`,
+pas `admin`/`operateur`).
 
 ## Numérotation des lots
 
