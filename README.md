@@ -33,8 +33,13 @@ partagés entre les deux applications : se connecter une fois sur
 3. Dans `config.local.php`, définir `DB_NAME_CAUSSELOT` (nom de la base
    causselot) et `CAUSSELOT_URL` (`https://app.causselot.fr/`) — voir
    `config.example.php`.
+4. **Paramètres > Connexion unique > Reprise des comptes** : recopie dans
+   la base partagée les comptes qui n'existaient que dans TraçaBoucher,
+   en conservant leurs mots de passe. Sans cette étape, leurs titulaires
+   ne peuvent plus se connecter. La page est relançable et n'écrase
+   jamais un identifiant déjà présent.
 
-Une fois ces trois étapes faites, `includes/auth.php` bascule seul sur les
+Une fois ces étapes faites, `includes/auth.php` bascule seul sur les
 comptes et les sessions partagés (repli automatique sur le comportement
 précédent tant que ce n'est pas fait, donc rien ne casse entre-temps), et
 **Utilisateurs** redirige vers app.causselot.fr, désormais seul endroit où

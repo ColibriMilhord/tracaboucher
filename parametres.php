@@ -261,6 +261,26 @@ require __DIR__ . '/includes/header.php';
   </p>
 </section>
 
+<section class="bg-surface rounded-xl border border-outline-variant p-5 mt-6">
+  <h3 class="font-headline-md font-bold mb-1">Connexion unique CAUSSELOT</h3>
+  <p class="text-xs text-on-surface-variant mb-4">
+    Les comptes sont communs à tous les services CAUSSELOT et se gèrent depuis le portail.
+    Ceux qui n'existaient que dans TraçaBoucher doivent y être repris une fois, sans quoi
+    leurs titulaires ne peuvent plus se connecter.
+  </p>
+  <div class="flex flex-wrap gap-2">
+    <a href="migrer_comptes.php" class="bg-primary text-on-primary rounded-full px-5 py-2.5 font-bold text-sm">
+      Reprise des comptes
+    </a>
+    <?php if (defined('CAUSSELOT_URL') && CAUSSELOT_URL !== ''): ?>
+    <a href="<?= h(rtrim(CAUSSELOT_URL, '/')) ?>/gestion_utilisateurs.php"
+       class="bg-surface-container text-on-surface rounded-full px-5 py-2.5 font-bold text-sm">
+      Gérer les comptes sur le portail
+    </a>
+    <?php endif ?>
+  </div>
+</section>
+
 <!-- Pont automatique : jeton pour l'agent installé sur le PC de la balance -->
 <?php
 $token = reglage('token_export');
