@@ -222,6 +222,31 @@ function session_demarrer(): void {
     session_start();
 }
 
+// La table des comptes est partagée avec app.causselot.fr et avec
+// l'ancien site colibrietcompagnie, qui n'écrivent pas le même
+// vocabulaire : « administrateur » là-bas vaut « admin » ici. Sans
+// cette table de correspondance, un administrateur du portail arrive
+// dans TraçaBoucher avec un rôle que rien ne reconnaît, et tous les
+// écrans d'administration disparaissent de sa navigation.
+const ROLES_HERITES = [
+    'administrateur' => 'admin',
+    'préparateur'    => 'atelier',
+    'preparateur'    => 'atelier',
+    'livreur'        => 'atelier',
+    'operateur'      => 'atelier',
+    'opérateur'      => 'atelier',
+];
+
+function role_canonique(?string $role): string {
+    $role = strtolower(trim((string)$role));
+    return ROLES_HERITES[$role] ?? $role;
+}
+
+function est_admin(?array $u = null): bool {
+    $u = $u ?? utilisateur_courant();
+    return $u !== null && role_canonique($u['role'] ?? '') === 'admin';
+}
+
 function utilisateur_courant(): ?array {
     session_demarrer();
     if (empty($_SESSION['uid'])) return null;
@@ -231,6 +256,7 @@ function utilisateur_courant(): ?array {
         $q->execute([$_SESSION['uid']]);
         $u = $q->fetch() ?: false;
         if (!$u || !$u['actif']) { deconnexion(); return null; }
+        $u['role'] = role_canonique($u['role']);
     }
     return $u ?: null;
 }
@@ -247,9 +273,13 @@ function exiger_connexion(): array {
 
 function exiger_admin(): array {
     $u = exiger_connexion();
-    if ($u['role'] !== 'admin') {
+    if (!est_admin($u)) {
         http_response_code(403);
-        exit('<p style="font-family:sans-serif;padding:24px">Accès réservé aux administrateurs. <a href="index.php">Retour</a></p>');
+        $ou = defined('CAUSSELOT_URL') && CAUSSELOT_URL !== ''
+            ? ' Le profil de votre compte se règle sur le portail CAUSSELOT.' : '';
+        exit('<p style="font-family:sans-serif;padding:24px;line-height:1.6">'
+           . 'Cet écran est réservé aux administrateurs.' . $ou
+           . '<br><a href="index.php">Retour</a> · <a href="exports.php">Exports</a></p>');
     }
     return $u;
 }
@@ -262,6 +292,7 @@ function connecter(string $identifiant, string $mdp): ?array {
     if (!$u || !password_verify($mdp, $u['mot_de_passe'])) return null;
 
     session_regenerate_id(true);
+    $u['role'] = role_canonique($u['role']);
     $_SESSION['uid'] = (int)$u['id'];
     if (colonne_comptes('derniere_connexion')) {
         pdo_comptes()->prepare('UPDATE ' . table_comptes() . ' SET derniere_connexion=NOW() WHERE id=?')

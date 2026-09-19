@@ -82,8 +82,9 @@
     <span class="material-symbols-outlined">inventory_2</span><?= h(APP_NAME) ?>
   </a>
   <div class="flex items-center gap-1">
-    <?php if (($moi['role'] ?? '') === 'admin'): ?>
     <a href="guide.php" title="Assistant balance" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">help</a>
+    <a href="exports.php" title="Exports" class="hidden md:inline-block material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">download</a>
+    <?php if (est_admin($moi)): ?>
     <a href="produits.php" title="Produits" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">inventory</a>
     <a href="parametres.php" title="Paramètres" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">settings</a>
     <a href="utilisateurs.php" title="Utilisateurs" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">group</a>
@@ -102,10 +103,12 @@
         ['entrees',      'entrees.php',      'move_to_inbox',   'Entrées'],
         ['fabrications', 'fabrications.php', 'outbox',          'Fabrications'],
         ['tracabilite',  'tracabilite.php',  'account_tree',    'Traçabilité'],
+        ['exports',      'exports.php',      'download',        'Exports'],
+        ['guide',        'guide.php',        'help',            'Assistant balance'],
       ];
-      if (($moi['role'] ?? '') === 'admin') {
-        $liens[] = ['produits', 'produits.php', 'inventory', 'Produits'];
-        $liens[] = ['guide', 'guide.php', 'help', 'Assistant balance'];
+      if (est_admin($moi)) {
+        $liens[] = ['produits',    'produits.php',    'inventory', 'Produits'];
+        $liens[] = ['parametres',  'parametres.php',  'settings',  'Paramètres'];
       }
       if (defined('CAUSSELOT_URL') && CAUSSELOT_URL !== '') {
         $liens[] = ['causselot', CAUSSELOT_URL, 'storefront', 'Portail CAUSSELOT'];
@@ -118,6 +121,15 @@
       </a>
       <?php endforeach ?>
     </nav>
+    <?php if (!est_admin($moi)): ?>
+    <div class="mx-4 mt-3 pt-3 border-t border-outline-variant text-xs text-on-surface-variant leading-relaxed">
+      Compte <strong><?= h($moi['role'] ?? 'atelier') ?></strong> : produits, paramètres et
+      comptes sont réservés aux administrateurs.
+      <?php if (defined('CAUSSELOT_URL') && CAUSSELOT_URL !== ''): ?>
+      Le profil se règle sur le <a class="text-primary underline" href="<?= h(CAUSSELOT_URL) ?>">portail CAUSSELOT</a>.
+      <?php endif ?>
+    </div>
+    <?php endif ?>
     <div class="px-6 pt-4 text-xs text-on-surface-variant" title="Version déployée"><?= h(version_affichee()) ?></div>
   </aside>
 

@@ -46,6 +46,20 @@ précédent tant que ce n'est pas fait, donc rien ne casse entre-temps), et
 créer ou modifier un compte (les rôles y sont `admin`/`atelier`/`client`,
 pas `admin`/`operateur`).
 
+### Rôles : vocabulaire partagé
+
+La table des comptes est commune à app.causselot.fr et à l'ancien site
+colibrietcompagnie, qui n'écrivent pas les mêmes libellés.
+`role_canonique()` (dans `includes/auth.php`) ramène `administrateur`
+vers `admin`, `preparateur`/`livreur`/`operateur` vers `atelier`. Sans
+elle, un administrateur du portail arrivait ici avec un rôle que rien ne
+reconnaissait, et tous les écrans d'administration disparaissaient de sa
+navigation — sans le moindre message.
+
+Ce qui demande `admin` : produits, composition, paramètres, comptes.
+Tout le reste — saisie, traçabilité, assistant balance, exports — est
+ouvert à l'atelier.
+
 ## Version affichée
 
 `version.php` porte le numéro de version et sa date. **Tout commit qui
@@ -85,8 +99,9 @@ matière première**. La catégorie « Viande » déclenche l'alerte de tempéra
 | `fabrications.php` | Suivi des fabrications, avec lots d'entrée utilisés |
 | `tracabilite.php` | Recherche ascendante et descendante |
 | `etiquette.php` | Vue imprimable d'un n° de lot |
-| `export.php` | Exports CSV (fiche de lot, registres complets) |
-| `parametres.php` | Types de matière, préfixe, registres — **admin** |
+| `exports.php` | Écran des exports — registres et fichiers balance |
+| `export.php` | Génération des CSV (fiche de lot, registres, DFS) |
+| `parametres.php` | Types de matière, préfixe, agréments, jeton — **admin** |
 | `utilisateurs.php` | Comptes opérateurs — **admin** |
 | `archive_v1/` | Ancienne version (espèces / ingrédients / plats), non accessible |
 

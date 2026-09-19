@@ -168,18 +168,17 @@ require __DIR__ . '/includes/header.php';
   </form>
 </section>
 
-<!-- Exports -->
+<!-- Exports : leur place est sur leur propre page, ouverte à tout
+     l'atelier. Ici on ne garde que le renvoi. -->
 <section class="bg-surface rounded-xl border border-outline-variant p-5">
-  <h3 class="font-headline-md font-bold mb-1">Registres</h3>
-  <p class="text-xs text-on-surface-variant mb-4">Export CSV équivalent aux classeurs papier, ouvrable dans Excel / LibreOffice.</p>
-  <div class="flex flex-col sm:flex-row gap-3">
-    <a href="export.php?type=registre_entrees" class="flex-1 bg-surface-container-low rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-2">
-      <span class="material-symbols-outlined">download</span>Réception matières premières
-    </a>
-    <a href="export.php?type=registre_fabrications" class="flex-1 bg-surface-container-low rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-2">
-      <span class="material-symbols-outlined">download</span>Suivi des fabrications
-    </a>
-  </div>
+  <h3 class="font-headline-md font-bold mb-1">Registres et fichiers balance</h3>
+  <p class="text-xs text-on-surface-variant mb-4">
+    Les exports ont leur propre écran, accessible à tout l'atelier : sortir un registre
+    de réception n'a pas à demander un compte administrateur.
+  </p>
+  <a href="exports.php" class="bg-surface-container-low rounded-xl px-4 py-3 text-sm font-semibold inline-flex items-center gap-2">
+    <span class="material-symbols-outlined">download</span>Aller aux exports
+  </a>
 </section>
 
 <section class="bg-surface rounded-xl border border-outline-variant p-5 mb-6">
@@ -247,14 +246,9 @@ require __DIR__ . '/includes/header.php';
 <section class="bg-surface rounded-xl border border-outline-variant p-5 mt-6">
   <h3 class="font-headline-md font-bold mb-1">Balance-étiqueteuse</h3>
   <p class="text-xs text-on-surface-variant mb-4">Fichiers à faire lire par DGI/RGI côté DFS.</p>
-  <div class="flex flex-col sm:flex-row gap-3">
-    <a href="export.php?type=dfs_articles" class="flex-1 bg-surface-container-low rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-2">
-      <span class="material-symbols-outlined">download</span>Articles (PLU / EAN)
-    </a>
-    <a href="export.php?type=dfs_lots" class="flex-1 bg-surface-container-low rounded-xl px-4 py-3 text-sm font-semibold flex items-center gap-2">
-      <span class="material-symbols-outlined">download</span>Lots fabriqués du jour
-    </a>
-  </div>
+  <a href="exports.php" class="bg-surface-container-low rounded-xl px-4 py-3 text-sm font-semibold inline-flex items-center gap-2">
+    <span class="material-symbols-outlined">download</span>Articles, lots du jour, Articulo
+  </a>
   <p class="text-xs text-on-surface-variant mt-4">
     <a class="text-primary underline font-semibold" href="maj.php">Mise à jour de la base</a>
     — à lancer après chaque livraison de nouvelle version.

@@ -7,6 +7,7 @@
       ['entrees',      'entrees.php',      'move_to_inbox', 'Entrées'],
       ['fabrications', 'fabrications.php', 'outbox',        'Fabric.'],
       ['tracabilite',  'tracabilite.php',  'account_tree',  'Traça'],
+      ['exports',      'exports.php',      'download',      'Exports'],
   ] as [$k,$url,$icone,$lib]): $on = $page_active === $k; ?>
   <a href="<?= $url ?>" class="flex flex-col items-center justify-center <?= $on?'text-primary font-bold':'text-on-surface-variant' ?> active:scale-95 transition-transform px-3 py-1 rounded-full">
     <span class="material-symbols-outlined"><?= $icone ?></span>

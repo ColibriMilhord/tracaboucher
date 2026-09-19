@@ -2,7 +2,10 @@
 $page_active = 'guide';
 $page_title  = 'Assistant balance';
 require_once __DIR__ . '/includes/auth.php';
-$moi = exiger_admin();
+// L'accompagnement n'administre rien : il explique. Le réserver aux
+// administrateurs privait de la marche à suivre ceux qui font le travail.
+$moi = exiger_connexion();
+$peut_regler = est_admin();
 
 $pdo = db();
 
@@ -85,8 +88,10 @@ if (is_array($statut)):
         <div class="text-sm font-semibold"><?= h($e['titre']) ?></div>
         <?php if (!empty($e['aide'])): ?><div class="text-xs text-on-surface-variant"><?= h($e['aide']) ?></div><?php endif ?>
       </div>
-      <?php if (!$e['ok']): ?>
+      <?php if (!$e['ok'] && $peut_regler): ?>
       <a href="<?= h($e['lien']) ?>" class="text-xs text-primary font-semibold shrink-0 mt-0.5"><?= h($e['action']) ?> →</a>
+      <?php elseif (!$e['ok']): ?>
+      <span class="text-xs text-on-surface-variant shrink-0 mt-0.5" title="Réglage réservé aux administrateurs">à faire régler</span>
       <?php endif ?>
     </div>
     <?php endforeach ?>
