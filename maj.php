@@ -80,6 +80,9 @@ require __DIR__ . '/includes/header.php';
 ?>
 
 <h2 class="font-headline-lg text-2xl font-bold text-primary mb-1">Mise à jour de la base</h2>
+<p class="text-xs text-on-surface-variant mb-2">
+  Version déployée sur ce serveur : <strong><?= h(version_affichee()) ?></strong>
+</p>
 <p class="text-sm text-on-surface-variant mb-6">
   Applique les évolutions de schéma livrées avec l'application. Sans effet si elles sont déjà en place.
 </p>

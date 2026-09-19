@@ -74,6 +74,7 @@ $suite = $_GET['suite'] ?? 'index.php';
   button{width:100%;padding:15px;border:none;border-radius:999px;background:#2c5530;color:#fff;
          font-size:16px;font-weight:700;cursor:pointer;font-family:inherit}
   .err{background:#ffdad6;color:#93000a;padding:12px 14px;border-radius:10px;font-size:13px;margin-bottom:16px}
+  .version{margin-top:20px;text-align:center;font-size:11px;color:#8a8a8a}
   .info{background:#e7f3ea;color:#1b5e20;padding:12px 14px;border-radius:10px;font-size:13px;margin-bottom:16px;line-height:1.5}
   .hint{font-size:12px;color:#4a4a4a;margin:-10px 0 16px}
 </style>
@@ -116,6 +117,8 @@ $suite = $_GET['suite'] ?? 'index.php';
     <button name="connexion" value="1">Se connecter</button>
   </form>
   <?php endif ?>
+
+  <div class="version"><?= h(version_affichee()) ?></div>
 </div>
 </body>
 </html>

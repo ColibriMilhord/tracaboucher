@@ -27,8 +27,9 @@ defined('CAUSSELOT_URL') || define('CAUSSELOT_URL', '');
 defined('UPLOAD_DIR') || define('UPLOAD_DIR', __DIR__ . '/uploads/');
 defined('UPLOAD_URL') || define('UPLOAD_URL', 'uploads/');
 
-defined('APP_NAME')    || define('APP_NAME', 'TraçaBoucher');
-defined('APP_VERSION') || define('APP_VERSION', '2.0');
+defined('APP_NAME') || define('APP_NAME', 'TraçaBoucher');
+// La version vit dans version.php : elle décrit le code livré, pas le
+// serveur, et ne doit pas pouvoir être écrasée par config.local.php.
 
 defined('MAX_UPLOAD_SIZE') || define('MAX_UPLOAD_SIZE', 10 * 1024 * 1024);
 defined('ALLOWED_EXT')     || define('ALLOWED_EXT', ['jpg','jpeg','png','pdf','webp','heic']);

@@ -321,4 +321,8 @@ $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' :
   <?php endif ?>
 </section>
 
+<p class="text-xs text-on-surface-variant text-center mt-6">
+  Version déployée sur ce serveur : <strong><?= h(version_affichee()) ?></strong>
+</p>
+
 <?php require __DIR__ . '/includes/footer.php'; ?>

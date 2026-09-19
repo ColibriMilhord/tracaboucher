@@ -118,6 +118,7 @@
       </a>
       <?php endforeach ?>
     </nav>
+    <div class="px-6 pt-4 text-xs text-on-surface-variant" title="Version déployée"><?= h(version_affichee()) ?></div>
   </aside>
 
   <main class="flex-1 p-4 md:p-8 pb-36 md:pb-10 max-w-5xl mx-auto w-full">

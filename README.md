@@ -46,6 +46,21 @@ précédent tant que ce n'est pas fait, donc rien ne casse entre-temps), et
 créer ou modifier un compte (les rôles y sont `admin`/`atelier`/`client`,
 pas `admin`/`operateur`).
 
+## Version affichée
+
+`version.php` porte le numéro de version et sa date. **Tout commit qui
+change quelque chose de visible incrémente ce fichier** — c'est ce qui
+permet de vérifier, après un déploiement, que le serveur fait bien
+tourner le dernier code, et non un déploiement resté en arrière ou une
+copie de fichiers figée lors d'un déménagement de domaine.
+
+La version apparaît en bas de la barre latérale sur ordinateur, sur la
+page de connexion, sur `maj.php` et en bas de **Paramètres**.
+
+Convention : `MAJEURE.MINEURE.CORRECTIF` — mineure pour une
+fonctionnalité ou la refonte d'un écran, correctif pour un bug ou un
+ajustement d'ergonomie.
+
 ## Numérotation des lots
 
 | | Format | Exemple |
