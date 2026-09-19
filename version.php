@@ -18,10 +18,19 @@
 //  censé empêcher.
 // ============================================================
 
-function version_app(): string  { return '2.1.0'; }
+function version_app(): string  { return '2.1.1'; }
 function version_date(): string { return '2026-09-19'; }
 
 // Ex. : « v2.1.0 · 19/09/2026 »
 function version_affichee(): string {
     return 'v' . version_app() . ' · ' . date('d/m/Y', strtotime(version_date()));
+}
+
+// Appelé directement dans le navigateur (…/version.php), ce fichier
+// répond la version en texte brut : c'est le moyen le plus court de
+// savoir ce qu'un serveur exécute réellement, sans connexion et sans
+// page mise en cache. Inclus par une autre page, il n'affiche rien.
+if (isset($_SERVER['SCRIPT_FILENAME']) && realpath($_SERVER['SCRIPT_FILENAME']) === __FILE__) {
+    header('Content-Type: text/plain; charset=UTF-8');
+    echo version_affichee(), "\n";
 }
