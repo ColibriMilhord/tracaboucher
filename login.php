@@ -33,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$panne && $premier && isset($_POST
             array_splice($colonnes, 2, 0, 'email');
             array_splice($valeurs, 2, 0, $ident);
         }
-        db()->prepare('INSERT INTO ' . table_comptes()
+        pdo_comptes()->prepare('INSERT INTO ' . table_comptes()
             . ' (' . implode(', ', $colonnes) . ') VALUES ('
             . implode(',', array_fill(0, count($colonnes), '?')) . ')')
             ->execute($valeurs);

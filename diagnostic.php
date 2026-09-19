@@ -30,6 +30,39 @@ const REPERES = [
 $erreur = null;
 $bases  = [];      // nom de base => [table => présente]
 $vues   = [];      // bases visibles, même vides
+$dediee = null;    // résultat du test de la connexion dédiée au portail
+
+/** Ce qui cloche visiblement dans un mot de passe, sans le montrer. */
+function verdict_mdp(string $mdp): string {
+    if ($mdp === '') return 'vide';
+    $notes = [strlen($mdp) . ' caractères'];
+    if (trim($mdp) !== $mdp)              $notes[] = 'espace en début ou en fin';
+    if (str_contains($mdp, '$'))          $notes[] = 'contient un $ : à écrire entre apostrophes simples';
+    if (str_contains($mdp, '\\'))         $notes[] = 'contient un antislash';
+    return implode(' — ', $notes);
+}
+
+/** Message court pour un échec de connexion, sans rien livrer. */
+function cause_mysql(PDOException $ex): string {
+    return match ((int)($ex->errorInfo[1] ?? 0)) {
+        1045 => "utilisateur ou mot de passe refusé",
+        1044 => "cet utilisateur n'a pas accès à cette base",
+        1049 => "cette base n'existe pas sous ce nom",
+        2002, 2003 => 'serveur MySQL injoignable',
+        default => 'refus MySQL (code ' . (int)($ex->errorInfo[1] ?? 0) . ')',
+    };
+}
+
+if ($autorise && DB_USER_CAUSSELOT !== '') {
+    try {
+        new PDO('mysql:host=' . DB_HOST_CAUSSELOT . ';dbname=' . DB_NAME_CAUSSELOT . ';charset=utf8mb4',
+                DB_USER_CAUSSELOT, DB_PASS_CAUSSELOT, [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
+        $dediee = true;
+    } catch (PDOException $ex) {
+        error_log('Diagnostic : connexion dédiée impossible — ' . $ex->getMessage());
+        $dediee = cause_mysql($ex);
+    }
+}
 
 if ($autorise) {
     try {
@@ -60,12 +93,7 @@ if ($autorise) {
         }
     } catch (PDOException $ex) {
         error_log('Diagnostic : connexion MySQL impossible — ' . $ex->getMessage());
-        $erreur = match ((int)($ex->errorInfo[1] ?? 0)) {
-            1045 => "L'utilisateur MySQL ou son mot de passe est refusé (DB_USER / DB_PASS).",
-            2002, 2003 => 'Le serveur MySQL est injoignable (DB_HOST).',
-            default => 'Le serveur MySQL a refusé la connexion (code '
-                     . (int)($ex->errorInfo[1] ?? 0) . ').',
-        };
+        $erreur = cause_mysql($ex);
     }
 }
 
@@ -135,9 +163,32 @@ foreach ($bases as $nom => $t) {
     <tr><th>DB_HOST</th><td><code><?= e(DB_HOST) ?></code></td></tr>
     <tr><th>DB_USER</th><td><code><?= e(DB_USER) ?></code></td></tr>
     <tr><th>DB_NAME</th><td><code><?= e(DB_NAME) ?></code> <span class="sub">base de TraçaBoucher</span></td></tr>
+    <tr><th>DB_PASS</th><td class="sub"><?= e(verdict_mdp(DB_PASS)) ?></td></tr>
     <tr><th>DB_NAME_CAUSSELOT</th><td><code><?= e(DB_NAME_CAUSSELOT) ?></code> <span class="sub">base des comptes du portail</span></td></tr>
+    <tr><th>DB_USER_CAUSSELOT</th><td>
+      <?php if (DB_USER_CAUSSELOT !== ''): ?>
+      <code><?= e(DB_USER_CAUSSELOT) ?></code>
+      <span class="sub"><?= e(verdict_mdp(DB_PASS_CAUSSELOT)) ?></span>
+      <?php else: ?>
+      <span class="sub">absent — les comptes sont lus via la connexion de TraçaBoucher,
+      ce qui exige un droit inter-bases</span>
+      <?php endif ?>
+    </td></tr>
     <tr><th>CAUSSELOT_URL</th><td><code><?= e(CAUSSELOT_URL !== '' ? CAUSSELOT_URL : '—') ?></code></td></tr>
   </table>
+
+  <?php if ($dediee !== null): ?>
+  <h2>Connexion dédiée à la base du portail</h2>
+  <?php if ($dediee === true): ?>
+  <div class="info"><strong>Elle fonctionne.</strong> Les comptes du portail sont lus
+    directement, sans droit inter-bases.</div>
+  <?php else: ?>
+  <div class="err"><strong>Elle échoue :</strong> <?= e($dediee) ?>.<br>
+    Reprenez <code>DB_USER_CAUSSELOT</code> et <code>DB_PASS_CAUSSELOT</code> tels quels
+    dans le <code>config.local.php</code> d'app.causselot.fr (ses lignes <code>DB_USER</code>
+    et <code>DB_PASS</code>).</div>
+  <?php endif ?>
+  <?php endif ?>
 
   <?php if ($erreur !== null): ?>
   <div class="err"><strong>Connexion au serveur MySQL impossible.</strong><br><?= e($erreur) ?></div>
@@ -193,7 +244,17 @@ foreach ($bases as $nom => $t) {
     <ul>
       <li><code>DB_NAME</code> est la base de TraçaBoucher : c'est elle qui porte <code>lots_entree</code>.</li>
       <li><code>DB_NAME_CAUSSELOT</code> est la base d'app.causselot.fr : elle porte <code>utilisateurs</code> et <code>sessions</code>. Sa valeur exacte est le <code>DB_NAME</code> du <code>config.local.php</code> d'app.causselot.fr.</li>
-      <li>Les deux bases doivent être associées au même utilisateur MySQL dans hPanel, sinon la connexion unique reste inactive (TraçaBoucher continue alors sur ses comptes locaux).</li>
+      <li><strong>Le plus simple :</strong> recopier aussi les lignes <code>DB_USER</code> et
+          <code>DB_PASS</code> d'app.causselot.fr, sous les noms
+          <code>DB_USER_CAUSSELOT</code> et <code>DB_PASS_CAUSSELOT</code>. TraçaBoucher
+          ouvre alors une seconde connexion : chaque base garde son utilisateur et il n'y a
+          aucun droit inter-bases à demander dans hPanel.</li>
+      <li>Sans ces deux lignes, il faut au contraire qu'un seul utilisateur MySQL soit
+          associé aux deux bases dans hPanel, sinon la connexion unique reste inactive
+          (TraçaBoucher continue alors sur ses comptes locaux).</li>
+      <li>Un mot de passe contenant <code>$</code> doit être écrit entre apostrophes
+          simples dans <code>config.local.php</code> : entre guillemets, PHP y verrait
+          une variable et enverrait un mot de passe tronqué.</li>
       <li>Retirez <code>DIAGNOSTIC_CLE</code> de <code>config.local.php</code> une fois le réglage terminé.</li>
     </ul>
   </div>

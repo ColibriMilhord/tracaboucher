@@ -22,10 +22,15 @@ function role_cible(string $role_local): string {
     return $role_local === 'admin' ? 'admin' : 'atelier';
 }
 
-$table_locale  = '`' . DB_NAME . '`.utilisateurs';
-$table_partagee = '`' . DB_NAME_CAUSSELOT . '`.utilisateurs';
+// Les comptes du portail peuvent être servis par une seconde connexion
+// (DB_USER_CAUSSELOT) ou par celle de TraçaBoucher en nommant l'autre
+// base : on prend ce que l'authentification utilise réellement, sinon la
+// reprise écrirait ailleurs que là où la connexion va lire.
+$pdo_partage    = pdo_comptes();
+$table_locale   = '`' . DB_NAME . '`.utilisateurs';
+$table_partagee = table_comptes();
 
-$configure = DB_NAME_CAUSSELOT !== '' && DB_NAME_CAUSSELOT !== DB_NAME;
+$configure = comptes_partages();
 $erreur = '';
 $rapport = null;
 $comptes = [];
@@ -34,7 +39,7 @@ if ($configure) {
     try {
         $locaux = $pdo->query("SELECT id, identifiant, nom, mot_de_passe, role, actif FROM $table_locale ORDER BY nom")->fetchAll();
 
-        $existants = $pdo->query("SELECT identifiant FROM $table_partagee")->fetchAll(PDO::FETCH_COLUMN);
+        $existants = $pdo_partage->query("SELECT identifiant FROM $table_partagee")->fetchAll(PDO::FETCH_COLUMN);
         $existants = array_map('strval', $existants);
 
         foreach ($locaux as $u) {
@@ -44,7 +49,7 @@ if ($configure) {
         }
     } catch (PDOException $e) {
         $erreur = "Lecture impossible : " . $e->getMessage()
-                . " — vérifiez que l'utilisateur MySQL de TraçaBoucher a bien accès à la base " . DB_NAME_CAUSSELOT . ".";
+                . " — voir l'état de la connexion unique dans Paramètres.";
     }
 }
 
@@ -52,7 +57,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $configure && !$erreur) {
     $choisis = array_map('intval', (array)($_POST['comptes'] ?? []));
     $copies = 0; $ignores = 0; $echecs = [];
 
-    $insert = $pdo->prepare("INSERT INTO $table_partagee (identifiant, nom, email, mot_de_passe, role, actif)
+    $insert = $pdo_partage->prepare("INSERT INTO $table_partagee (identifiant, nom, email, mot_de_passe, role, actif)
                              VALUES (?, ?, ?, ?, ?, ?)");
 
     foreach ($comptes as $u) {
@@ -73,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $configure && !$erreur) {
     $rapport = ['copies' => $copies, 'ignores' => $ignores, 'echecs' => $echecs];
 
     // Recalcul pour que le tableau affiché reflète l'état réel.
-    $existants = $pdo->query("SELECT identifiant FROM $table_partagee")->fetchAll(PDO::FETCH_COLUMN);
+    $existants = $pdo_partage->query("SELECT identifiant FROM $table_partagee")->fetchAll(PDO::FETCH_COLUMN);
     $existants = array_map('strval', $existants);
     foreach ($comptes as $i => $u) {
         $comptes[$i]['deja_present'] = in_array((string)$u['identifiant'], $existants, true);
@@ -93,12 +98,9 @@ require __DIR__ . '/includes/header.php';
 
 <?php if (!$configure): ?>
 <div class="bg-error-container text-on-error-container rounded-xl p-5 text-sm">
-  <p class="font-bold mb-1">Connexion unique pas encore configurée</p>
-  <p>
-    <code>DB_NAME_CAUSSELOT</code> doit désigner la base de <code>app.causselot.fr</code>
-    dans <code>config.local.php</code>, et l'utilisateur MySQL de TraçaBoucher doit y avoir accès
-    (hPanel &gt; Bases de données MySQL). Tant que ce n'est pas fait, il n'y a rien à reprendre.
-  </p>
+  <p class="font-bold mb-1">Connexion unique inactive</p>
+  <p><?= h(diagnostic_comptes() ?? '') ?></p>
+  <p class="mt-2">Tant que la base du portail n'est pas atteinte, il n'y a rien à reprendre.</p>
 </div>
 
 <?php elseif ($erreur): ?>

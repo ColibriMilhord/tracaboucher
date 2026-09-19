@@ -31,6 +31,15 @@ defined('DB_PASS') || define('DB_PASS', '');
 // Par défaut identique à DB_NAME (comportement inchangé tant que
 // config.local.php ne définit pas explicitement la base causselot).
 defined('DB_NAME_CAUSSELOT') || define('DB_NAME_CAUSSELOT', DB_NAME);
+
+// Identifiants propres à la base du portail. Quand ils sont fournis,
+// TraçaBoucher ouvre une seconde connexion pour lire les comptes, au
+// lieu de nommer l'autre base dans ses requêtes : chaque base garde son
+// utilisateur MySQL et aucun droit inter-bases n'est à demander.
+defined('DB_USER_CAUSSELOT') || define('DB_USER_CAUSSELOT', '');
+defined('DB_PASS_CAUSSELOT') || define('DB_PASS_CAUSSELOT', '');
+defined('DB_HOST_CAUSSELOT') || define('DB_HOST_CAUSSELOT', DB_HOST);
+
 defined('CAUSSELOT_URL') || define('CAUSSELOT_URL', '');
 
 defined('UPLOAD_DIR') || define('UPLOAD_DIR', __DIR__ . '/uploads/');

@@ -47,24 +47,92 @@ final class SessionBD implements SessionHandlerInterface {
 // ============================================================
 //  Où vivent réellement les comptes
 //
-//  La connexion unique suppose deux choses côté serveur : que
-//  DB_NAME_CAUSSELOT désigne bien la base d'app.causselot.fr, et que
-//  l'utilisateur MySQL de TraçaBoucher ait reçu l'accès à cette base
-//  dans hPanel. Tant que l'une des deux manque, MySQL refuse la
-//  requête (erreur 1142) — et personne ne peut plus se connecter,
-//  alors que les comptes d'origine sont toujours là, dans la base de
-//  TraçaBoucher. On teste donc l'accès une fois, et on retombe sur la
-//  table locale plutôt que de laisser l'atelier à la porte.
+//  Trois cas, essayés dans cet ordre :
+//
+//  1. Une connexion dédiée à la base du portail, avec SES identifiants
+//     MySQL (DB_USER_CAUSSELOT). C'est la voie la plus simple sur un
+//     hébergement mutualisé : chaque base garde son propre utilisateur,
+//     et aucun droit inter-bases n'est à demander. L'authentification
+//     ne fait d'ailleurs aucune jointure entre les deux bases.
+//
+//  2. La connexion de TraçaBoucher, en nommant la base du portail dans
+//     la requête. Cela exige que le même utilisateur MySQL ait accès aux
+//     deux bases, sans quoi MySQL refuse (erreur 1142).
+//
+//  3. À défaut, la table `utilisateurs` locale. Les comptes d'origine
+//     sont toujours là : mieux vaut un atelier qui travaille sans la
+//     connexion unique qu'un atelier à la porte.
 // ============================================================
 
-// Une table est-elle réellement lisible par l'utilisateur MySQL courant ?
-function table_lisible(string $table): bool {
-    try { db()->query("SELECT 1 FROM $table LIMIT 1"); return true; }
+// Une table est-elle réellement lisible par cette connexion ?
+function table_lisible_sur(PDO $pdo, string $table): bool {
+    try { $pdo->query("SELECT 1 FROM $table LIMIT 1"); return true; }
     catch (PDOException $e) { return false; }
 }
 
+function table_lisible(string $table): bool {
+    return table_lisible_sur(db(), $table);
+}
+
+// La configuration désigne-t-elle une autre base que celle de TraçaBoucher ?
+function base_partagee_configuree(): bool {
+    return DB_NAME_CAUSSELOT !== '' && DB_NAME_CAUSSELOT !== DB_NAME;
+}
+
+// Des identifiants propres à la base du portail ont-ils été fournis ?
+function connexion_dediee_configuree(): bool {
+    return base_partagee_configuree() && DB_USER_CAUSSELOT !== '';
+}
+
 /**
- * Sessions partagées, à deux conditions strictes.
+ * Connexion et tables à employer pour les comptes, résolues une fois.
+ *
+ * @return array{pdo: PDO, comptes: string, sessions: string, partage: bool}
+ */
+function comptes_source(): array {
+    static $src = null;
+    if ($src !== null) return $src;
+
+    // 1. Connexion dédiée à la base du portail.
+    if (connexion_dediee_configuree()) {
+        try {
+            $pdo = new PDO(
+                'mysql:host=' . DB_HOST_CAUSSELOT . ';dbname=' . DB_NAME_CAUSSELOT . ';charset=utf8mb4',
+                DB_USER_CAUSSELOT, DB_PASS_CAUSSELOT,
+                [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                 PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
+                 PDO::ATTR_EMULATE_PREPARES => false]
+            );
+            return $src = ['pdo' => $pdo, 'comptes' => 'utilisateurs',
+                           'sessions' => 'sessions', 'partage' => true];
+        } catch (PDOException $e) {
+            error_log('Connexion dédiée à ' . DB_NAME_CAUSSELOT . ' impossible : ' . $e->getMessage());
+        }
+    }
+
+    // 2. Connexion de TraçaBoucher, base du portail nommée dans la requête.
+    if (base_partagee_configuree()) {
+        $comptes = '`' . DB_NAME_CAUSSELOT . '`.utilisateurs';
+        if (table_lisible_sur(db(), $comptes)) {
+            return $src = ['pdo' => db(), 'comptes' => $comptes,
+                           'sessions' => '`' . DB_NAME_CAUSSELOT . '`.sessions',
+                           'partage' => true];
+        }
+    }
+
+    // 3. Comptes locaux.
+    return $src = ['pdo' => db(), 'comptes' => 'utilisateurs',
+                   'sessions' => 'sessions', 'partage' => false];
+}
+
+function pdo_comptes(): PDO   { return comptes_source()['pdo']; }
+function table_comptes(): string { return comptes_source()['comptes']; }
+
+// Vrai quand les comptes lus sont bien ceux du portail CAUSSELOT.
+function comptes_partages(): bool { return comptes_source()['partage']; }
+
+/**
+ * Sessions partagées, à une condition stricte.
  *
  * La table `sessions` ne porte que des identifiants numériques de
  * comptes. Les partager en lisant les comptes ailleurs ferait passer
@@ -76,38 +144,16 @@ function table_lisible(string $table): bool {
 function table_sessions_causselot_accessible(): bool {
     static $ok = null;
     if ($ok === null) {
-        $ok = comptes_partages()
-           && table_lisible('`' . DB_NAME_CAUSSELOT . '`.sessions');
+        $src = comptes_source();
+        $ok = $src['partage'] && table_lisible_sur($src['pdo'], $src['sessions']);
     }
     return $ok;
 }
 
-// La configuration désigne-t-elle une autre base que celle de TraçaBoucher ?
-function base_partagee_configuree(): bool {
-    return DB_NAME_CAUSSELOT !== '' && DB_NAME_CAUSSELOT !== DB_NAME;
-}
-
-// Nom de table à employer dans les requêtes sur les comptes.
-function table_comptes(): string {
-    static $table = null;
-    if ($table === null) {
-        $partagee = '`' . DB_NAME_CAUSSELOT . '`.utilisateurs';
-        if (!base_partagee_configuree())      $table = 'utilisateurs';
-        elseif (table_lisible($partagee))     $table = $partagee;
-        else                                  $table = 'utilisateurs';
-    }
-    return $table;
-}
-
-// Vrai quand les comptes lus sont bien ceux du portail CAUSSELOT.
-function comptes_partages(): bool {
-    return base_partagee_configuree() && table_comptes() !== 'utilisateurs';
-}
-
 /**
  * Ce qui empêche la connexion unique de fonctionner, en clair, ou null
- * si tout va bien. Sert aux écrans d'administration ; le message n'est
- * jamais montré à un visiteur non connecté, il nomme des bases MySQL.
+ * si tout va bien. Sert aux écrans d'administration ; le message nomme
+ * des bases MySQL et n'est jamais montré à un visiteur non connecté.
  */
 function diagnostic_comptes(): ?string {
     if (!base_partagee_configuree()) {
@@ -115,15 +161,22 @@ function diagnostic_comptes(): ?string {
              . "les comptes restent propres à TraçaBoucher.";
     }
     if (comptes_partages()) return null;
+    if (connexion_dediee_configuree()) {
+        return "La connexion à la base « " . DB_NAME_CAUSSELOT . " » avec ses propres "
+             . "identifiants (DB_USER_CAUSSELOT / DB_PASS_CAUSSELOT) est refusée par "
+             . "MySQL. Reprenez-les dans le config.local.php d'app.causselot.fr. "
+             . "En attendant, les comptes locaux prennent le relais.";
+    }
     return "La base « " . DB_NAME_CAUSSELOT . " » est inaccessible à l'utilisateur MySQL "
-         . "de TraçaBoucher. Vérifiez que ce nom est bien celui de la base "
-         . "d'app.causselot.fr, puis accordez-lui l'accès dans hPanel > Bases de "
-         . "données MySQL. En attendant, les comptes locaux prennent le relais.";
+         . "de TraçaBoucher. Le plus simple est d'ajouter DB_USER_CAUSSELOT et "
+         . "DB_PASS_CAUSSELOT dans config.local.php, repris du config.local.php "
+         . "d'app.causselot.fr : aucun droit inter-bases n'est alors nécessaire. "
+         . "En attendant, les comptes locaux prennent le relais.";
 }
 
 // Aucune table de comptes lisible : l'application ne peut rien faire.
 function comptes_introuvables(): bool {
-    return !table_lisible(table_comptes());
+    return !table_lisible_sur(pdo_comptes(), table_comptes());
 }
 
 /**
@@ -137,7 +190,7 @@ function colonne_comptes(string $colonne): bool {
     if ($colonnes === null) {
         $colonnes = [];
         try {
-            foreach (db()->query('SHOW COLUMNS FROM ' . table_comptes()) as $c) {
+            foreach (pdo_comptes()->query('SHOW COLUMNS FROM ' . table_comptes()) as $c) {
                 $colonnes[strtolower($c['Field'])] = true;
             }
         } catch (PDOException $e) {
@@ -151,7 +204,8 @@ function session_demarrer(): void {
     if (session_status() === PHP_SESSION_ACTIVE) return;
 
     if (table_sessions_causselot_accessible()) {
-        session_set_save_handler(new SessionBD(db(), '`' . DB_NAME_CAUSSELOT . '`.sessions'));
+        $src = comptes_source();
+        session_set_save_handler(new SessionBD($src['pdo'], $src['sessions']));
     }
 
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
@@ -173,7 +227,7 @@ function utilisateur_courant(): ?array {
     if (empty($_SESSION['uid'])) return null;
     static $u = null;
     if ($u === null) {
-        $q = db()->prepare('SELECT id, identifiant, nom, role, actif FROM ' . table_comptes() . ' WHERE id=?');
+        $q = pdo_comptes()->prepare('SELECT id, identifiant, nom, role, actif FROM ' . table_comptes() . ' WHERE id=?');
         $q->execute([$_SESSION['uid']]);
         $u = $q->fetch() ?: false;
         if (!$u || !$u['actif']) { deconnexion(); return null; }
@@ -202,7 +256,7 @@ function exiger_admin(): array {
 
 function connecter(string $identifiant, string $mdp): ?array {
     session_demarrer();
-    $q = db()->prepare('SELECT * FROM ' . table_comptes() . ' WHERE identifiant=? AND actif=1');
+    $q = pdo_comptes()->prepare('SELECT * FROM ' . table_comptes() . ' WHERE identifiant=? AND actif=1');
     $q->execute([$identifiant]);
     $u = $q->fetch();
     if (!$u || !password_verify($mdp, $u['mot_de_passe'])) return null;
@@ -210,7 +264,7 @@ function connecter(string $identifiant, string $mdp): ?array {
     session_regenerate_id(true);
     $_SESSION['uid'] = (int)$u['id'];
     if (colonne_comptes('derniere_connexion')) {
-        db()->prepare('UPDATE ' . table_comptes() . ' SET derniere_connexion=NOW() WHERE id=?')
+        pdo_comptes()->prepare('UPDATE ' . table_comptes() . ' SET derniere_connexion=NOW() WHERE id=?')
             ->execute([$u['id']]);
     }
     return $u;
@@ -228,7 +282,7 @@ function deconnexion(): void {
 
 function aucun_compte(): bool {
     try {
-        return (int)db()->query('SELECT COUNT(*) FROM ' . table_comptes())->fetchColumn() === 0;
+        return (int)pdo_comptes()->query('SELECT COUNT(*) FROM ' . table_comptes())->fetchColumn() === 0;
     } catch (PDOException $e) {
         return false;
     }

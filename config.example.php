@@ -19,10 +19,20 @@ define('DB_PASS', 'votre_mot_de_passe');
 // la connexion unique : l'application se rabat alors sur ses comptes
 // locaux et le signale dans Paramètres.
 //
-// L'utilisateur MySQL ci-dessus doit en outre avoir reçu l'accès à
-// cette base dans hPanel > Bases de données MySQL. Voir
-// docs/integration-tracabilite.md dans le dépôt appcausselot.
 define('DB_NAME_CAUSSELOT', 'u000000000_causselot');
+
+// Identifiants MySQL de CETTE base, recopiés depuis le config.local.php
+// d'app.causselot.fr (ses lignes DB_USER et DB_PASS). C'est la façon la
+// plus simple de partager les comptes sur un hébergement mutualisé :
+// TraçaBoucher ouvre une seconde connexion, chaque base garde son propre
+// utilisateur, et il n'y a aucun droit inter-bases à demander.
+define('DB_USER_CAUSSELOT', 'u000000000_causselot');
+define('DB_PASS_CAUSSELOT', 'le_mot_de_passe_de_app_causselot');
+
+// Variante sans ces deux lignes : l'utilisateur MySQL de TraçaBoucher
+// doit alors être associé AUSSI à la base ci-dessus, dans hPanel >
+// Bases de données MySQL. Voir docs/integration-tracabilite.md dans le
+// dépôt appcausselot.
 
 // Portail CAUSSELOT (gestion des comptes centralisée là-bas désormais).
 define('CAUSSELOT_URL', 'https://app.causselot.fr/');
