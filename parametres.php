@@ -263,6 +263,20 @@ require __DIR__ . '/includes/header.php';
 
 <section class="bg-surface rounded-xl border border-outline-variant p-5 mt-6">
   <h3 class="font-headline-md font-bold mb-1">Connexion unique CAUSSELOT</h3>
+  <?php $souci = diagnostic_comptes(); ?>
+  <?php if ($souci === null): ?>
+  <p class="text-xs text-primary font-semibold mb-3 flex items-start gap-1">
+    <span class="material-symbols-outlined text-base">check_circle</span>
+    Active : les comptes lus ici sont ceux du portail (base <?= h(DB_NAME_CAUSSELOT) ?>).
+  </p>
+  <?php else: ?>
+  <div class="bg-error-container text-on-error-container rounded-lg p-3 text-xs mb-3 leading-relaxed">
+    <strong class="flex items-center gap-1 mb-1">
+      <span class="material-symbols-outlined text-base">warning</span>Connexion unique inactive
+    </strong>
+    <?= h($souci) ?>
+  </div>
+  <?php endif ?>
   <p class="text-xs text-on-surface-variant mb-4">
     Les comptes sont communs à tous les services CAUSSELOT et se gèrent depuis le portail.
     Ceux qui n'existaient que dans TraçaBoucher doivent y être repris une fois, sans quoi

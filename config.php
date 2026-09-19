@@ -12,6 +12,15 @@ if (is_file(__DIR__ . '/config.local.php')) {
     require __DIR__ . '/config.local.php';
 }
 
+// Une erreur PHP affichée à l'écran livre au visiteur le nom de
+// l'utilisateur MySQL, celui des bases et le chemin du serveur : on la
+// journalise sans jamais la montrer. Passer APP_DEBUG à true dans
+// config.local.php pour la revoir le temps d'une mise au point.
+defined('APP_DEBUG') || define('APP_DEBUG', false);
+error_reporting(E_ALL);
+ini_set('display_errors', APP_DEBUG ? '1' : '0');
+ini_set('log_errors', '1');
+
 // Appliquées uniquement si config.local.php ne les a pas déjà définies.
 defined('DB_HOST') || define('DB_HOST', 'localhost');
 defined('DB_NAME') || define('DB_NAME', '');

@@ -17,7 +17,11 @@ function db(): PDO {
                  PDO::ATTR_EMULATE_PREPARES=>false]
             );
         } catch (PDOException $e) {
-            die('<div style="font-family:sans-serif;padding:20px;background:#fee;border:2px solid #7A1C1C;border-radius:12px;margin:20px"><strong>Connexion BD impossible</strong><br>'.htmlspecialchars($e->getMessage()).'<br><br>Vérifiez que <code>config.local.php</code> existe sur le serveur et contient les identifiants MySQL (modèle dans <code>config.example.php</code>)</div>');
+            // Le message de MySQL nomme l'utilisateur et la base : on ne le
+            // montre qu'en mise au point, et on le journalise toujours.
+            error_log('Connexion BD impossible : ' . $e->getMessage());
+            $detail = APP_DEBUG ? '<br>' . htmlspecialchars($e->getMessage()) : '';
+            die('<div style="font-family:sans-serif;padding:20px;background:#fee;border:2px solid #7A1C1C;border-radius:12px;margin:20px"><strong>Connexion BD impossible</strong>'.$detail.'<br><br>Vérifiez que <code>config.local.php</code> existe sur le serveur et contient les identifiants MySQL (modèle dans <code>config.example.php</code>)</div>');
         }
     }
     return $pdo;

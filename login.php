@@ -2,11 +2,16 @@
 require_once __DIR__ . '/includes/auth.php';
 session_demarrer();
 
+// Aucune table de comptes lisible : ni la base partagée, ni la base locale.
+// Sans ce garde-fou la page se termine sur une erreur PHP brute, qui affiche
+// au passage l'utilisateur MySQL et le chemin du serveur.
+$panne = comptes_introuvables();
+
 // Premier démarrage : aucun compte en base → on force la création de l'administrateur
-$premier = aucun_compte();
+$premier = !$panne && aucun_compte();
 $msg = '';
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && $premier && isset($_POST['creer_admin'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$panne && $premier && isset($_POST['creer_admin'])) {
     $ident = trim($_POST['identifiant'] ?? '');
     $nom   = trim($_POST['nom'] ?? '');
     $mdp   = (string)($_POST['mot_de_passe'] ?? '');
@@ -19,17 +24,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && $premier && isset($_POST['creer_adm
     } elseif ($e = verifier_force_mdp($mdp)) {
         $msg = $e;
     } else {
-        // email est repris de l'identifiant : la colonne est historiquement
-        // obligatoire côté app.causselot.fr (ancien schéma partagé).
-        db()->prepare('INSERT INTO ' . DB_NAME_CAUSSELOT . '.utilisateurs (identifiant, nom, email, mot_de_passe, role) VALUES (?,?,?,?,?)')
-            ->execute([$ident, $nom, $ident, password_hash($mdp, PASSWORD_DEFAULT), 'admin']);
+        // `email` n'existe que dans le schéma d'app.causselot.fr, où la
+        // colonne est obligatoire : on la reprend de l'identifiant, et on
+        // s'en passe quand les comptes sont restés locaux.
+        $colonnes = ['identifiant', 'nom', 'mot_de_passe', 'role'];
+        $valeurs  = [$ident, $nom, password_hash($mdp, PASSWORD_DEFAULT), 'admin'];
+        if (colonne_comptes('email')) {
+            array_splice($colonnes, 2, 0, 'email');
+            array_splice($valeurs, 2, 0, $ident);
+        }
+        db()->prepare('INSERT INTO ' . table_comptes()
+            . ' (' . implode(', ', $colonnes) . ') VALUES ('
+            . implode(',', array_fill(0, count($colonnes), '?')) . ')')
+            ->execute($valeurs);
         connecter($ident, $mdp);
         header('Location: index.php');
         exit;
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$premier && isset($_POST['connexion'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$panne && !$premier && isset($_POST['connexion'])) {
     $_SESSION['essais'] = ($_SESSION['essais'] ?? 0) + 1;
     if ($_SESSION['essais'] > 8) {
         $msg = 'Trop de tentatives. Patientez une minute avant de réessayer.';
@@ -51,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && !$premier && isset($_POST['connexio
     }
 }
 
-if (!$premier && utilisateur_courant()) { header('Location: index.php'); exit; }
+if (!$panne && !$premier && utilisateur_courant()) { header('Location: index.php'); exit; }
 $suite = $_GET['suite'] ?? 'index.php';
 ?>
 <!DOCTYPE html>
@@ -86,7 +100,13 @@ $suite = $_GET['suite'] ?? 'index.php';
 
   <?php if ($msg): ?><div class="err"><?= h($msg) ?></div><?php endif ?>
 
-  <?php if ($premier): ?>
+  <?php if ($panne): ?>
+  <div class="err">
+    La base des comptes n'est pas accessible : personne ne peut se connecter pour
+    l'instant. Prévenez l'administrateur — la configuration du serveur est à revoir.
+  </div>
+
+  <?php elseif ($premier): ?>
   <div class="info">Aucun compte n'existe encore. Ce premier compte sera administrateur : il pourra créer les comptes des opérateurs.</div>
   <form method="post" autocomplete="off">
     <label for="nom">Nom complet</label>
