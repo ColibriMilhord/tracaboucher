@@ -17,14 +17,48 @@ function db(): PDO {
                  PDO::ATTR_EMULATE_PREPARES=>false]
             );
         } catch (PDOException $e) {
-            // Le message de MySQL nomme l'utilisateur et la base : on ne le
-            // montre qu'en mise au point, et on le journalise toujours.
             error_log('Connexion BD impossible : ' . $e->getMessage());
-            $detail = APP_DEBUG ? '<br>' . htmlspecialchars($e->getMessage()) : '';
-            die('<div style="font-family:sans-serif;padding:20px;background:#fee;border:2px solid #7A1C1C;border-radius:12px;margin:20px"><strong>Connexion BD impossible</strong>'.$detail.'<br><br>Vérifiez que <code>config.local.php</code> existe sur le serveur et contient les identifiants MySQL (modèle dans <code>config.example.php</code>)</div>');
+            die(page_connexion_impossible($e));
         }
     }
     return $pdo;
+}
+
+/**
+ * Pourquoi MySQL a refusé la connexion, en clair et sans rien livrer.
+ *
+ * Le message brut de MySQL nomme l'utilisateur et les bases : il n'a
+ * rien à faire sur une page publique. Mais « Connexion BD impossible »
+ * tout court ne dit pas quoi corriger. On traduit donc le code d'erreur,
+ * qui suffit à savoir où chercher.
+ */
+function cause_connexion_bd(PDOException $e): string {
+    $code = (int)($e->errorInfo[1] ?? 0);
+    return match ($code) {
+        1045 => "L'utilisateur MySQL ou son mot de passe est refusé par le serveur "
+              . "(DB_USER / DB_PASS dans config.local.php).",
+        1044 => "Cet utilisateur MySQL n'a pas accès à la base demandée : associez-les "
+              . "dans hPanel > Bases de données MySQL, ou corrigez DB_NAME.",
+        1049 => "La base nommée dans DB_NAME n'existe pas sous ce nom.",
+        2002, 2003 => "Le serveur MySQL est injoignable (DB_HOST).",
+        default => "Le serveur MySQL a refusé la connexion (code " . $code . ").",
+    };
+}
+
+function page_connexion_impossible(PDOException $e): string {
+    $cause  = htmlspecialchars(cause_connexion_bd($e));
+    $detail = APP_DEBUG ? '<p style="margin:12px 0 0"><code>'
+            . htmlspecialchars($e->getMessage()) . '</code></p>' : '';
+    return '<div style="font-family:sans-serif;padding:20px;background:#fee;'
+         . 'border:2px solid #7A1C1C;border-radius:12px;margin:20px;max-width:640px;line-height:1.5">'
+         . '<strong>Connexion à la base impossible</strong>'
+         . '<p style="margin:12px 0 0">' . $cause . '</p>'
+         . '<p style="margin:12px 0 0">Les valeurs attendues se lisent dans hPanel &gt; Bases de '
+         . 'données MySQL ; le modèle est dans <code>config.example.php</code>. '
+         . 'La page <code>diagnostic.php</code> liste les bases réellement accessibles '
+         . 'à cet utilisateur.</p>'
+         . $detail
+         . '</div>';
 }
 
 // ============================================================

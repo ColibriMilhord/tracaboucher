@@ -26,3 +26,7 @@ define('DB_NAME_CAUSSELOT', 'u000000000_causselot');
 
 // Portail CAUSSELOT (gestion des comptes centralisée là-bas désormais).
 define('CAUSSELOT_URL', 'https://app.causselot.fr/');
+
+// Ouvre diagnostic.php, qui liste les bases réellement accessibles à
+// DB_USER et indique quoi écrire ci-dessus. À retirer une fois réglé.
+// define('DIAGNOSTIC_CLE', 'un-mot-long-et-unique');

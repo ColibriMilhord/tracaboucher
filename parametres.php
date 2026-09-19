@@ -292,6 +292,12 @@ require __DIR__ . '/includes/header.php';
       Gérer les comptes sur le portail
     </a>
     <?php endif ?>
+    <?php if (defined('DIAGNOSTIC_CLE') && DIAGNOSTIC_CLE !== ''): ?>
+    <a href="diagnostic.php?cle=<?= urlencode(DIAGNOSTIC_CLE) ?>"
+       class="bg-surface-container text-on-surface rounded-full px-5 py-2.5 font-bold text-sm">
+      Diagnostic des bases
+    </a>
+    <?php endif ?>
   </div>
 </section>
 
