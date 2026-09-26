@@ -7,8 +7,8 @@ require_once __DIR__ . '/includes/dfs.php';
 // administrateurs privait de la marche à suivre ceux qui font le travail.
 //
 // Les réglages décrits ici (DGI, RGI, DLD) viennent des manuels Dibal :
-// 49-MDRGI000EN10 (DGI / RGI) et 49-MDLD500EN08 (DLD). Les libellés des
-// écrans DFS sont cités en anglais, tels que dans ces manuels.
+// 49-MDRGI000EN10 (DGI / RGI) et 49-MDLD500EN08 (DLD), en anglais. Les
+// écrans sont désignés en français, leur nom anglais en repère (ECRANS).
 $moi = exiger_connexion();
 $peut_regler = est_admin();
 
@@ -73,17 +73,79 @@ function liste_pas(array $pas, int $depart = 1): void {
     echo '</ol>';
 }
 
-// Un tableau « réglage → valeur » ; la valeur peut porter du HTML.
+// Un tableau « réglage → valeur » ; le réglage et la valeur peuvent porter du HTML.
 function tableau_reglages(array $lignes): void {
     echo '<div class="overflow-x-auto"><table class="w-full text-sm"><tbody>';
     foreach ($lignes as [$quoi, $valeur, $pourquoi]) {
         echo '<tr class="border-t border-outline-variant align-top">'
-           . '<td class="py-2 pr-3 font-semibold whitespace-nowrap">' . h($quoi) . '</td>'
+           . '<td class="py-2 pr-3">' . $quoi . '</td>'
            . '<td class="py-2"><div>' . $valeur . '</div>'
            . ($pourquoi !== '' ? '<div class="text-xs text-on-surface-variant">' . h($pourquoi) . '</div>' : '')
            . '</td></tr>';
     }
     echo '</tbody></table></div>';
+}
+
+// ── Intitulés des écrans Dibal (DGI, RGI, DLD).
+//    Les manuels fournis sont en anglais, les postes de l'atelier en français.
+//    Chaque élément est donc désigné par ce qu'il fait, en français, suivi de
+//    son nom dans le manuel, entre guillemets, pour le retrouver à l'écran.
+//    Quand on aura relevé les intitulés français exacts, c'est ici seulement
+//    qu'ils se remplacent.
+const ECRANS = [
+    // DGI
+    'Design General Integration' => 'DGI',
+    'Imports'                    => 'Importations',
+    'Name'                       => 'Nom',
+    'File type'                  => 'Type de fichier',
+    'Initial line'               => 'Ligne de départ',
+    'Fields separator'           => 'Séparateur de champs',
+    'Operation type'             => 'Type d\'opération',
+    'Data to be added/eliminated'=> 'Ajouts / suppressions',
+    'Load file'                  => 'Dossier du fichier',
+    'File to import'             => 'Fichier à importer',
+    'Generate List of Fields'    => 'Générer la liste des champs',
+    'Continue'                   => 'Continuer',
+    'Import configuration'       => 'Configuration des importations',
+    'Communicate importation with scales selected in DFS' => 'Importer seulement vers les balances sélectionnées dans DFS',
+    'Activating imports'         => 'Activation des importations',
+    // Champs DFS et types, dans la liste de DGI
+    'Code'                       => 'Code',
+    'Type'                       => 'Type',
+    'Name 2'                     => 'Nom 2',
+    'Price'                      => 'Prix',
+    'Expiration days'            => 'Jours de péremption',
+    'G Text'                     => 'Texte G',
+    'Label format'               => 'Format d\'étiquette',
+    'Numeric'                    => 'Numérique',
+    'Text'                       => 'Texte',
+    'Numeric with dot as decimal mark' => 'Numérique, point décimal',
+    // RGI
+    'Run General Integration'    => 'RGI',
+    'Show status'                => 'Afficher l\'état',
+    'Show report'                => 'Afficher le rapport',
+    'Sending modifications'      => 'Envoyer les modifications',
+    // DLD
+    'New Label'                  => 'Nouvelle étiquette',
+    'Items'                      => 'Articles',
+    'Item name'                  => 'Nom de l\'article',
+    'Text G'                     => 'Texte G',
+    'Expiry date'                => 'Date de péremption',
+    'Bar Codes'                  => 'Codes-barres',
+    'Shipping'                   => 'Envoi',
+    'Send'                       => 'Envoyer',
+];
+
+// Désignation en clair ; « Text 01 » et consorts suivent la même règle.
+function ecran_fr(string $en): string {
+    if (isset(ECRANS[$en])) return ECRANS[$en];
+    return preg_match('/^Text (\d+)$/', $en, $m) ? 'Texte ' . $m[1] : $en;
+}
+
+// En gras la désignation française, puis le nom du manuel en petit.
+function ecran(string $en): string {
+    return '<strong>' . h(ecran_fr($en)) . '</strong>'
+         . ' <span class="text-xs text-on-surface-variant whitespace-nowrap">« ' . h($en) . ' »</span>';
 }
 
 $dossier = DFS_DOSSIER;
@@ -241,30 +303,35 @@ if (is_array($statut)):
 <!-- 3. DGI -->
 <section class="bg-surface rounded-xl border border-outline-variant p-5 mb-6">
   <h3 class="font-headline-md font-bold mb-2">3. Apprendre à DFS à lire le fichier <span class="text-on-surface-variant font-normal text-sm">— DGI, une seule fois</span></h3>
-  <p class="text-sm text-on-surface-variant mb-4">
-    DGI (<em>Design General Integration</em>) est livré avec DFS. On y décrit une fois le fichier ;
-    RGI s'en sert ensuite à chaque import. Gardez sous la main un ARTICLES.TXT téléchargé à l'étape 2.
+  <p class="text-sm text-on-surface-variant mb-3">
+    DGI est livré avec DFS. On y décrit une fois le fichier ; RGI s'en sert ensuite à chaque import.
+    Gardez sous la main un ARTICLES.TXT téléchargé à l'étape 2.
+  </p>
+  <p class="text-xs bg-surface-container-low rounded-lg p-3 mb-4">
+    Votre DFS est en français, les manuels Dibal en anglais. Chaque écran et chaque réglage est donc
+    désigné ici par ce qu'il fait, suivi entre guillemets de son nom dans le manuel : cherchez à l'écran
+    l'intitulé français qui y correspond.
   </p>
   <?php liste_pas([
-    'Menu Démarrer → <strong>Dibal DFS</strong> → <strong>Design General Integration</strong>. '
-      . 'Utilisateur <code>general</code>, mot de passe <code>general</code> (valeurs d\'usine).',
-    'Menu <strong>Imports</strong> → bouton <strong>Créer</strong>, puis remplissez :',
+    'Menu Démarrer → dossier <strong>Dibal DFS</strong> → raccourci de DGI ' . ecran('Design General Integration') . '. '
+      . 'Identifiant <code>general</code>, mot de passe <code>general</code> (valeurs d\'usine).',
+    'Menu des ' . ecran('Imports') . ' → bouton de création, puis remplissez :',
   ]) ?>
   <div class="mt-3 mb-4 pl-9">
     <?php tableau_reglages([
-      ['Name',             'TracaBoucher', ''],
-      ['File type',        'Articles', ''],
-      ['Initial line',     '<strong>1</strong>', 'La ligne 0 porte les titres des colonnes : on la saute.'],
-      ['Fields separator', '<strong>;</strong> (point-virgule)', ''],
-      ['Operation type',   'Data to be added/eliminated', 'Crée les nouveaux produits, met à jour les autres.'],
-      ['Load file',        '<code>' . h($dossier) . '</code>', 'Le dossier que RGI surveille.'],
-      ['File to import',   '<code>ARTICLES*.TXT</code>', 'L\'étoile accepte aussi « ARTICLES (1).TXT », si le navigateur a renommé le fichier.'],
+      [ecran('Name'),             'TracaBoucher', ''],
+      [ecran('File type'),        'Articles', ''],
+      [ecran('Initial line'),     '<strong>1</strong>', 'La ligne 0 porte les titres des colonnes : on la saute.'],
+      [ecran('Fields separator'), '<strong>;</strong> (point-virgule)', ''],
+      [ecran('Operation type'),   ecran('Data to be added/eliminated'), 'Crée les nouveaux produits, met à jour les autres.'],
+      [ecran('Load file'),        '<code>' . h($dossier) . '</code>', 'Le dossier que RGI surveille.'],
+      [ecran('File to import'),   '<code>ARTICLES*.TXT</code>', 'L\'étoile accepte aussi « ARTICLES (1).TXT », si le navigateur a renommé le fichier.'],
     ]) ?>
   </div>
   <?php liste_pas([
-    'Juste en dessous, choisissez votre ARTICLES.TXT, puis bouton <strong>Generate List of Fields</strong> → <strong>Continue</strong>.',
+    'Juste en dessous, choisissez votre ARTICLES.TXT, puis ' . ecran('Generate List of Fields') . ' → ' . ecran('Continue') . '.',
     'DGI affiche les champs numérotés à partir de 0, avec les valeurs de votre premier produit. '
-      . 'Pour chaque numéro, choisissez le champ DFS du tableau ci-dessous :',
+      . 'Pour chaque numéro, choisissez le champ DFS et le type du tableau ci-dessous :',
   ], 3) ?>
   <div class="mt-3 mb-4 overflow-x-auto">
     <table class="w-full text-sm">
@@ -284,42 +351,46 @@ if (is_array($statut)):
             <div><?= h($contenu) ?></div>
             <div class="text-xs text-on-surface-variant"><?= $v === '' ? '<em>vide pour ce produit</em>' : 'ex. ' . h($v) ?></div>
           </td>
-          <td class="py-2 pr-3 font-semibold whitespace-nowrap"><?= h($champ) ?></td>
-          <td class="py-2 text-xs <?= $champ === 'Price' ? 'font-bold text-error' : 'text-on-surface-variant' ?>"><?= h($type) ?></td>
+          <td class="py-2 pr-3">
+            <div class="font-semibold"><?= h(ecran_fr($champ)) ?></div>
+            <div class="text-xs text-on-surface-variant">« <?= h($champ) ?> »</div>
+          </td>
+          <td class="py-2 text-xs <?= $champ === 'Price' ? 'font-bold text-error' : 'text-on-surface-variant' ?>">
+            <div><?= h(ecran_fr($type)) ?></div>
+            <?php if (ecran_fr($type) !== $type): ?><div class="font-normal">« <?= h($type) ?> »</div><?php endif ?>
+          </td>
         </tr>
         <?php endforeach ?>
       </tbody>
     </table>
     <p class="text-xs text-on-surface-variant mt-2">
-      Le type du prix est le seul piège : le fichier écrit les prix avec un point (11.30). Avec un autre
-      choix que <em>Numeric with dot as decimal mark</em>, DFS les lirait mal. Les champs Text restés vides
-      n'impriment rien.
+      Le type du prix est le seul piège : le fichier écrit les prix avec un point (11.30). Il faut le type
+      numérique <strong>avec point décimal</strong>, pas avec virgule ni « selon la configuration régionale »,
+      sinon DFS les lirait mal. Les champs Texte restés vides n'impriment rien.
     </p>
   </div>
   <?php liste_pas([
-    'Menu <strong>Import configuration</strong> : import actif <strong>toute la journée</strong>. '
-      . 'Laissez décochée « <em>Communicate importation with scales selected in DFS</em> » : cochée sans balance sélectionnée dans DFS, rien ne serait importé.',
-    'Menu <strong>Activating imports</strong> : cochez l\'import <strong>TracaBoucher</strong>. C\'est fini pour DGI.',
+    'Menu ' . ecran('Import configuration') . ' : import actif <strong>toute la journée</strong>. '
+      . 'Laissez décochée la case ' . ecran('Communicate importation with scales selected in DFS')
+      . ' : cochée sans balance sélectionnée dans DFS, rien ne serait importé.',
+    'Menu ' . ecran('Activating imports') . ' : cochez l\'import <strong>TracaBoucher</strong>. C\'est fini pour DGI.',
   ], 5) ?>
-  <p class="text-xs text-on-surface-variant mt-4">
-    Les écrans sont nommés ici comme dans le manuel Dibal, en anglais. Le menu
-    <em>DGI general → Language</em> change la langue de DGI.
-  </p>
 </section>
 
 <!-- 4. RGI -->
 <section class="bg-surface rounded-xl border border-outline-variant p-5 mb-6">
   <h3 class="font-headline-md font-bold mb-2">4. Laisser RGI importer <span class="text-on-surface-variant font-normal text-sm">— à laisser tourner</span></h3>
   <p class="text-sm text-on-surface-variant mb-4">
-    RGI (<em>Run General Integration</em>) surveille <code><?= h($dossier) ?></code> : dès qu'un ARTICLES.TXT y
-    arrive, il l'enregistre dans DFS et l'envoie à la balance.
+    RGI surveille <code><?= h($dossier) ?></code> : dès qu'un ARTICLES.TXT y arrive, il l'enregistre dans DFS
+    et l'envoie à la balance.
   </p>
   <?php liste_pas([
-    'Menu Démarrer → <strong>Dibal DFS</strong> → <strong>Run General Integration</strong>. Une icône apparaît près de l\'horloge.',
-    'Clic droit sur l\'icône → <strong>Show status</strong> : « WAITING… » il attend le fichier, « IMPORTING… » il l\'importe puis l\'envoie à la balance.',
-    'Une fois importé, le fichier quitte <code>' . h($dossier) . '</code> (une copie va dans <em>ProcessedFiles</em>) : c\'est le signe que tout s\'est bien passé.',
-    'Pour que RGI démarre avec Windows : touches <strong>Windows + R</strong>, tapez <code>shell:startup</code>, et copiez dans ce dossier le raccourci « Run General Integration ».',
-    'Une balance était éteinte pendant l\'envoi ? Une fois rallumée : clic droit sur l\'icône → <strong>Sending modifications</strong>.',
+    'Menu Démarrer → dossier <strong>Dibal DFS</strong> → raccourci de RGI ' . ecran('Run General Integration') . '. Une icône apparaît près de l\'horloge.',
+    'Clic droit sur l\'icône → ' . ecran('Show status') . ' : RGI indique qu\'il attend le fichier (« WAITING… » dans le manuel), '
+      . 'puis qu\'il l\'importe et l\'envoie à la balance (« IMPORTING… »).',
+    'Une fois importé, le fichier quitte <code>' . h($dossier) . '</code> (une copie va dans le dossier <em>ProcessedFiles</em>) : c\'est le signe que tout s\'est bien passé.',
+    'Pour que RGI démarre avec Windows : touches <strong>Windows + R</strong>, tapez <code>shell:startup</code>, et copiez dans ce dossier le raccourci de RGI.',
+    'Une balance était éteinte pendant l\'envoi ? Une fois rallumée : clic droit sur l\'icône → ' . ecran('Sending modifications') . '.',
   ]) ?>
 </section>
 
@@ -327,30 +398,31 @@ if (is_array($statut)):
 <section class="bg-surface rounded-xl border border-outline-variant p-5 mb-6">
   <h3 class="font-headline-md font-bold mb-2">5. Préparer l'étiquette <span class="text-on-surface-variant font-normal text-sm">— DLD, une seule fois</span></h3>
   <p class="text-sm text-on-surface-variant mb-4">
-    DLD (<em>Dibal Label Designer</em>) dessine l'étiquette que la balance imprime. Chaque champ reçu
-    de l'application y a sa place.
+    DLD, l'éditeur d'étiquettes de DFS, dessine ce que la balance imprime. Chaque champ reçu de
+    l'application y a sa place.
   </p>
   <?php liste_pas([
     'Menu Démarrer → <strong>DFS Applications</strong> → <strong>DLD</strong> (ou depuis DFS). '
-      . '<strong>New → New Label</strong> : modèle <em>500 Range/D900</em>, en millimètres, largeur de votre étiquette (60 mm au plus).',
+      . 'Nouvelle étiquette ' . ecran('New Label') . ' : modèle <em>500 Range/D900</em>, en millimètres, largeur de votre étiquette (60 mm au plus).',
     'Glissez sur l\'étiquette les champs dont vous avez besoin :',
   ]) ?>
   <div class="mt-3 mb-4 pl-9">
     <?php tableau_reglages([
-      ['Nom du produit',        'Items → <strong>Item name</strong> et <strong>Name 2</strong>', 'Deux lignes de 20 caractères.'],
-      ['Ingrédients',           'Items → <strong>Text G</strong>', ''],
-      ['Origine (bovin)',       'Items → <strong>Text 1</strong> à <strong>Text 6</strong>', 'Origine ou Né / Élevé, Abattu, agrément, Découpé, agrément.'],
-      ['Bio',                   'Logos → l\'Eurofeuille, puis Items → <strong>Text 7</strong> et <strong>Text 8</strong> dessous', 'Code de l\'organisme et origine agricole. Logo : largeur multiple de 8, 432 pixels au plus.'],
-      ['DLC',                   'Dates → <strong>Expiry date</strong>', 'Calculée par la balance avec la durée de vie.'],
-      ['Poids, prix',           'Weight, Price, Amount', ''],
-      ['Code-barres',           'Bar Codes → <strong>EAN 13</strong>', ''],
+      ['<strong>Nom du produit</strong>', ecran('Items') . ' → ' . ecran('Item name') . ' et ' . ecran('Name 2'), 'Deux lignes de 20 caractères.'],
+      ['<strong>Ingrédients</strong>',    ecran('Items') . ' → ' . ecran('Text G'), ''],
+      ['<strong>Origine (bovin)</strong>', ecran('Items') . ' → ' . ecran('Text 1') . ' à ' . ecran('Text 6'), 'Origine ou Né / Élevé, Abattu, agrément, Découpé, agrément.'],
+      ['<strong>Bio</strong>',            'Logos → l\'Eurofeuille, puis ' . ecran('Items') . ' → ' . ecran('Text 7') . ' et ' . ecran('Text 8') . ' dessous',
+       'Code de l\'organisme et origine agricole. Logo : largeur multiple de 8, 432 pixels au plus.'],
+      ['<strong>DLC</strong>',            'Dates → ' . ecran('Expiry date'), 'Calculée par la balance avec la durée de vie.'],
+      ['<strong>Poids, prix</strong>',    'Poids, prix au kg, prix à payer (« Weight », « Price », « Amount »)', ''],
+      ['<strong>Code-barres</strong>',    ecran('Bar Codes') . ' → <strong>EAN 13</strong>', ''],
     ]) ?>
   </div>
   <?php liste_pas([
-    'Onglet <strong>Shipping</strong> : <strong>Label format</strong> = un numéro à partir de <strong>21</strong> (par exemple 21), cochez la balance, puis <strong>Send</strong>.',
+    'Onglet ' . ecran('Shipping') . ' : ' . ecran('Label format') . ' = un numéro à partir de <strong>21</strong> (par exemple 21), cochez la balance, puis ' . ecran('Send') . '.',
     $format_etiquette !== ''
       ? 'Le n° <strong>' . h($format_etiquette) . '</strong> est réglé dans l\'application : il part avec chaque produit. Dans DGI, associez aussi le champ n° '
-        . (count($colonnes) - 1) . ' à <strong>Label format</strong>.'
+        . (count($colonnes) - 1) . ' à ' . ecran('Label format') . '.'
       : 'Pour que tous les produits utilisent cette étiquette, reportez son numéro dans '
         . ($peut_regler ? '<a href="parametres.php#balance" class="text-primary underline">Paramètres → Balance-étiqueteuse</a>' : 'Paramètres (administrateur)')
         . ' : une colonne « Label format » s\'ajoute au fichier, à associer dans DGI.',
@@ -366,14 +438,14 @@ if (is_array($statut)):
   <summary class="cursor-pointer font-headline-md font-bold">En cas de souci</summary>
   <dl class="flex flex-col gap-4 text-sm mt-4">
     <?php foreach ([
-      ['Rien ne se passe', 'RGI est-il lancé (icône près de l\'horloge) ? L\'import TracaBoucher est-il coché dans <em>Activating imports</em> ? '
+      ['Rien ne se passe', 'RGI est-il lancé (icône près de l\'horloge) ? L\'import TracaBoucher est-il coché dans ' . ecran('Activating imports') . ' ? '
         . 'Le fichier est-il bien dans <code>' . h($dossier) . '</code> ?'],
       ['Un produit manque sur la balance', 'RGI écarte une ligne dont une donnée est invalide et envoie les autres. La raison (ligne, champ) est dans '
-        . '<em>Show report</em>, dans le dossier <code>RGI\\Reports</code> et dans <code>RGI\\Logs</code>. Les limites connues sont signalées à l\'étape 1.'],
-      ['Prix faux sur la balance', 'Dans DGI, le type du champ <em>Price</em> doit être <em>Numeric with dot as decimal mark</em> : le fichier écrit 11.30, avec un point.'],
+        . ecran('Show report') . ', dans le dossier <code>RGI\\Reports</code> et dans <code>RGI\\Logs</code>. Les limites connues sont signalées à l\'étape 1.'],
+      ['Prix faux sur la balance', 'Dans DGI, le type du champ ' . ecran('Price') . ' doit être ' . ecran('Numeric with dot as decimal mark') . ' : le fichier écrit 11.30, avec un point.'],
       ['Accents faux (« Ã© »)', ($peut_regler ? '<a href="parametres.php#balance" class="text-primary underline">Paramètres → Balance-étiqueteuse</a>' : 'Paramètres')
         . ' → Encodage : <em>Windows (ANSI)</em>. Puis renvoyez le fichier.'],
-      ['Les titres des colonnes apparaissent comme un produit', 'Dans DGI, <em>Initial line</em> doit valoir 1.'],
+      ['Les titres des colonnes apparaissent comme un produit', 'Dans DGI, ' . ecran('Initial line') . ' doit valoir 1.'],
       ['Un produit retiré ici reste sur la balance', 'Le fichier ne contient que les produits actifs : supprimez l\'ancien article dans DFS.'],
       ['L\'agent indique un échec', 'La raison s\'affiche en haut de cette page ; le détail est dans <code>agent-balance.log</code>, dans le dossier de l\'agent.'],
       ['Changement de PC', 'DGI garde son réglage dans <code>LineData.xml</code> : copié dans le dossier de RGI du nouveau PC, il évite de refaire l\'étape 3.'],

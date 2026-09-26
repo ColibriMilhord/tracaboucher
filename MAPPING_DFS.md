@@ -2,7 +2,8 @@
 
 Sources : manuels Dibal **DGI / RGI** (49-MDRGI000EN10, 17/07/2015) et **DLD**
 (49-MDLD500EN08). Les libellés d'écran sont cités en anglais, comme dans ces
-manuels. La marche à suivre pas à pas, pour l'utilisateur, est dans l'application :
+manuels ; sur un DFS en français, ils sont traduits (l'Assistant balance les
+désigne en français, avec ce nom anglais en repère). La marche à suivre pas à pas, pour l'utilisateur, est dans l'application :
 **Assistant balance** (`guide.php`).
 
 ## Le fichier : ARTICLES.TXT
