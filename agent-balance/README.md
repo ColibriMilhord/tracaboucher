@@ -36,9 +36,24 @@ L'agent tourne ensuite tout seul : dès que vous modifiez un prix dans l'appli, 
 le détecte à la synchro suivante et dépose le fichier que DFS (RGI) envoie à la
 balance. Le résultat s'affiche aussi dans l'appli (**Assistant balance**).
 
+## Envoyer tout de suite (double-clic)
+
+Pour ne pas attendre la synchro suivante — après un changement de prix, ou si la
+balance a été réinitialisée : **double-cliquez sur `maj_dfs.bat`**.
+
+Il fait exactement ce que fait l'agent planifié (téléchargement, vérification,
+sauvegarde, compte rendu dans l'appli), à une différence près : il redépose le
+fichier **même si rien n'a changé**. La fenêtre affiche **OK**, ou la raison de
+l'échec — et en cas d'échec, rien n'est remplacé.
+
+RGI prend ensuite le relais tout seul, **à condition d'être lancé** sur ce PC :
+il repère `ARTICLES.TXT`, l'importe dans DFS, l'envoie à la balance et le range
+dans son dossier des fichiers traités.
+
 ### En cas de besoin, à la main
 
 - Relancer une fois : `powershell -ExecutionPolicy Bypass -File .\agent-balance.ps1`
+  (ajouter `-Forcer` pour redéposer le fichier même sans changement)
 - (Re)planifier : `powershell -ExecutionPolicy Bypass -File .\installer-tache.ps1 -IntervalleMinutes 2`
 - La config générée est dans `config.ps1` (modèle : `config.exemple.ps1`).
 

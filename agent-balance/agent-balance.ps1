@@ -8,10 +8,13 @@
 #  - N'ecrit JAMAIS directement dans la base de DFS.
 #
 #  Lancement manuel :  powershell -ExecutionPolicy Bypass -File agent-balance.ps1
+#  -Forcer : redepose le fichier meme sans changement (utilise par maj_dfs.bat).
 #  (Messages en ASCII volontairement, pour Windows PowerShell 5.1.)
 # ============================================================
 [CmdletBinding()]
-param()
+param(
+    [switch]$Forcer
+)
 
 $ErrorActionPreference = 'Stop'
 $racine     = Split-Path -Parent $MyInvocation.MyCommand.Path
@@ -68,18 +71,23 @@ try {
         throw "Reponse inattendue (pas l'export balance). Jeton invalide ou site indisponible."
     }
     $contenu  = Get-Content -Path $tmp -Raw -Encoding UTF8
-    $nbLignes = ([regex]::Matches($contenu, "`n")).Count
+    # Une ligne par produit, plus la ligne d'en-tetes.
+    $nbLignes = [Math]::Max(0, ([regex]::Matches($contenu, "`n")).Count - 1)
     $hash     = (Get-FileHash -Path $tmp -Algorithm SHA256).Hash
 
     $ancien = ''
     if (Test-Path $hashFile) { $ancien = (Get-Content $hashFile -Raw).Trim() }
-    if ($hash -eq $ancien) {
+    if ($hash -eq $ancien -and -not $Forcer) {
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue
         Journal 'INFO' 'Aucun changement depuis la derniere synchro.'
         exit 0
     }
 
-    Journal 'INFO' ("Changement detecte : {0} produit(s) a transmettre." -f $nbLignes)
+    if ($hash -eq $ancien) {
+        Journal 'INFO' ("Envoi force : {0} produit(s) redeposes sans changement." -f $nbLignes)
+    } else {
+        Journal 'INFO' ("Changement detecte : {0} produit(s) a transmettre." -f $nbLignes)
+    }
     $horo = Get-Date -Format 'yyyyMMdd_HHmmss'
 
     if (Test-Path $Config.Destination) {

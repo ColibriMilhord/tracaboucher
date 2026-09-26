@@ -1,4 +1,6 @@
 * text=auto eol=lf
+# cmd.exe perd ses étiquettes (goto/call) dans un .bat en fins de ligne LF.
+*.bat text eol=crlf
 *.png binary
 *.jpg binary
 *.pdf binary

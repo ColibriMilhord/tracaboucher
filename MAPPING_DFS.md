@@ -35,6 +35,31 @@ déjà les noms de champs DFS : le mapping dans DGI est donc une correspondance
 5. `CLASE_NOMBRE` et `FAMILIA` sont les deux seules colonnes à relier manuellement
    à un identifiant DFS ; toutes les autres sont des correspondances directes.
 
+## Réglages DGI de l'import (lecture du fichier)
+
+Le fichier est déposé par l'agent (`agent-balance/`) sous le nom `ARTICLES.TXT`,
+dans le dossier indiqué à `installer.bat` (`C:\DibalImport` par défaut). C'est
+ce dossier que RGI surveille.
+
+| Réglage DGI | Valeur |
+|---|---|
+| Type de fichier | Articles |
+| Dossier du fichier (*Load file*) | le dossier donné à `installer.bat` |
+| Fichier à importer (*File to import*) | `ARTICLES.TXT` |
+| Séparateur de champs | point-virgule `;` |
+| Délimiteur de texte | guillemet double `"` — tout libellé contenant un espace ou un `;` est entre guillemets |
+| Première ligne | noms des colonnes (tableau ci-dessus) : à ignorer à l'import |
+| Séparateur décimal | point (`12.50`) |
+| Encodage | UTF-8 (avec BOM) |
+
+Ne pas choisir un dossier sous `C:\Program Files` : Windows y refuse l'écriture
+sans droits administrateur, et `maj_dfs.bat`, lancé d'un double-clic, n'en a pas.
+
+RGI doit être **lancé** pour que l'import se fasse : il importe `ARTICLES.TXT`,
+l'envoie aux balances, puis le déplace dans ses fichiers traités. L'agent planifié
+ne redépose le fichier que si un produit a changé ; `maj_dfs.bat` le redépose à
+chaque double-clic.
+
 ## Important
 
 Ne jamais créer d'article directement dans DFS ni écrire dans `sys_datos_dfs` à la

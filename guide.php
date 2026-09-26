@@ -67,12 +67,16 @@ if (is_array($statut)):
 <div class="rounded-xl p-4 mb-6 <?= $ok ? 'bg-primary-container text-on-primary-container' : 'bg-error-container text-on-error-container' ?>">
   <div class="flex items-center gap-2 font-bold">
     <span class="material-symbols-outlined"><?= $ok ? 'cloud_done' : 'cloud_off' ?></span>
-    Synchronisation automatique — dernière : <?= h($quand) ?>
+    Synchronisation avec la balance — dernière : <?= h($quand) ?>
   </div>
   <div class="text-sm mt-1">
     <?= $ok
         ? 'OK — ' . ((int)($statut['nb'] ?? 0)) . ' produit(s) transmis à la balance.'
         : 'Échec — ' . h($statut['message'] ?? 'raison inconnue') ?>
+  </div>
+  <div class="text-xs mt-2 opacity-80">
+    Pour envoyer sans attendre : sur le PC de la balance, double-cliquez sur
+    <code>maj_dfs.bat</code> dans le dossier de l'agent.
   </div>
 </div>
 <?php endif ?>
