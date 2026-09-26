@@ -75,6 +75,9 @@ dans son dossier des fichiers traités.
 Tout est tracé dans `agent-balance.log`. Les messages `[ERREUR]` expliquent la
 cause (jeton invalide, dossier introuvable, pas de réseau…). « Réponse inattendue »
 après une mise à jour de l'application : l'agent date d'avant la version 2.7 et ne
-reconnaît pas le nouveau fichier, retéléchargez-le et relancez `installer.bat`. Le fichier destiné à
+reconnaît pas le nouveau fichier, retéléchargez-le et relancez `installer.bat`.
+« mysqldump code … : sauvegarde base ignorée » : le MySQL de DFS écoute sur le port
+3306 (voir son `my.ini`). Un agent installé avant la version 2.7.2 visait 3307 :
+relancez `installer.bat`, ou corrigez `DbPort` dans `config.ps1`. Le fichier destiné à
 DFS n'est **jamais** remplacé si le téléchargement échoue : la dernière version
 valide reste en place.

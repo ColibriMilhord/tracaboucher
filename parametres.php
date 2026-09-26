@@ -276,7 +276,8 @@ require __DIR__ . '/includes/header.php';
         <option value="ansi" <?= reglage('dfs_encodage') === 'ansi' ? 'selected' : '' ?>>Windows (ANSI)</option>
       </select>
       <p class="text-xs text-on-surface-variant mt-1">
-        À changer seulement si les accents sortent mal sur l'étiquette (« Ã© » au lieu de « é »).
+        Doit correspondre à la page de codes de l'import dans DGI : UTF-8 = 65001, Windows (ANSI) = 1252.
+        La base de DFS est en UTF-8 : ne passer en ANSI que si DGI ne propose pas 65001.
       </p>
     </div>
     <div>

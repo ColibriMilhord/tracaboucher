@@ -100,6 +100,7 @@ const ECRANS = [
     'File type'                  => 'Type de fichier',
     'Initial line'               => 'Ligne de départ',
     'Fields separator'           => 'Séparateur de champs',
+    'Code page'                  => 'Page de codes',
     'Operation type'             => 'Type d\'opération',
     'Data to be added/eliminated'=> 'Ajouts / suppressions',
     'Load file'                  => 'Dossier du fichier',
@@ -149,6 +150,11 @@ function ecran(string $en): string {
 }
 
 $dossier = DFS_DOSSIER;
+
+// Page de codes à choisir dans DGI : celle du fichier que l'application
+// produit (Paramètres → Encodage). Les deux doivent aller ensemble, sinon
+// les accents s'impriment mal.
+$code_page = reglage('dfs_encodage') === 'ansi' ? ['Windows-1252 (ANSI)', '1252'] : ['UTF-8', '65001'];
 
 require __DIR__ . '/includes/header.php';
 ?>
@@ -313,7 +319,7 @@ if (is_array($statut)):
     l'intitulé français qui y correspond.
   </p>
   <?php liste_pas([
-    'Menu Démarrer → dossier <strong>Dibal DFS</strong> → raccourci de DGI ' . ecran('Design General Integration') . '. '
+    'Menu Démarrer → dossier <strong>Dibal DFS</strong> → raccourci ' . ecran('Design General Integration') . '. '
       . 'Identifiant <code>general</code>, mot de passe <code>general</code> (valeurs d\'usine).',
     'Menu des ' . ecran('Imports') . ' → bouton de création, puis remplissez :',
   ]) ?>
@@ -323,6 +329,8 @@ if (is_array($statut)):
       [ecran('File type'),        'Articles', ''],
       [ecran('Initial line'),     '<strong>1</strong>', 'La ligne 0 porte les titres des colonnes : on la saute.'],
       [ecran('Fields separator'), '<strong>;</strong> (point-virgule)', ''],
+      [ecran('Code page'),        '<strong>' . h($code_page[0]) . '</strong> (n° ' . h($code_page[1]) . ')',
+       'L\'encodage du fichier : avec une autre page, les accents s\'impriment mal.'],
       [ecran('Operation type'),   ecran('Data to be added/eliminated'), 'Crée les nouveaux produits, met à jour les autres.'],
       [ecran('Load file'),        '<code>' . h($dossier) . '</code>', 'Le dossier que RGI surveille.'],
       [ecran('File to import'),   '<code>ARTICLES*.TXT</code>', 'L\'étoile accepte aussi « ARTICLES (1).TXT », si le navigateur a renommé le fichier.'],
@@ -385,7 +393,7 @@ if (is_array($statut)):
     et l'envoie à la balance.
   </p>
   <?php liste_pas([
-    'Menu Démarrer → dossier <strong>Dibal DFS</strong> → raccourci de RGI ' . ecran('Run General Integration') . '. Une icône apparaît près de l\'horloge.',
+    'Menu Démarrer → dossier <strong>Dibal DFS</strong> → raccourci ' . ecran('Run General Integration') . '. Une icône apparaît près de l\'horloge.',
     'Clic droit sur l\'icône → ' . ecran('Show status') . ' : RGI indique qu\'il attend le fichier (« WAITING… » dans le manuel), '
       . 'puis qu\'il l\'importe et l\'envoie à la balance (« IMPORTING… »).',
     'Une fois importé, le fichier quitte <code>' . h($dossier) . '</code> (une copie va dans le dossier <em>ProcessedFiles</em>) : c\'est le signe que tout s\'est bien passé.',
@@ -403,7 +411,7 @@ if (is_array($statut)):
   </p>
   <?php liste_pas([
     'Menu Démarrer → <strong>DFS Applications</strong> → <strong>DLD</strong> (ou depuis DFS). '
-      . 'Nouvelle étiquette ' . ecran('New Label') . ' : modèle <em>500 Range/D900</em>, en millimètres, largeur de votre étiquette (60 mm au plus).',
+      . ecran('New Label') . ' : modèle <em>500 Range/D900</em>, en millimètres, largeur de votre étiquette (60 mm au plus).',
     'Glissez sur l\'étiquette les champs dont vous avez besoin :',
   ]) ?>
   <div class="mt-3 mb-4 pl-9">
@@ -443,8 +451,13 @@ if (is_array($statut)):
       ['Un produit manque sur la balance', 'RGI écarte une ligne dont une donnée est invalide et envoie les autres. La raison (ligne, champ) est dans '
         . ecran('Show report') . ', dans le dossier <code>RGI\\Reports</code> et dans <code>RGI\\Logs</code>. Les limites connues sont signalées à l\'étape 1.'],
       ['Prix faux sur la balance', 'Dans DGI, le type du champ ' . ecran('Price') . ' doit être ' . ecran('Numeric with dot as decimal mark') . ' : le fichier écrit 11.30, avec un point.'],
-      ['Accents faux (« Ã© »)', ($peut_regler ? '<a href="parametres.php#balance" class="text-primary underline">Paramètres → Balance-étiqueteuse</a>' : 'Paramètres')
-        . ' → Encodage : <em>Windows (ANSI)</em>. Puis renvoyez le fichier.'],
+      ['Accents faux (« Ã© »)', 'Dans DGI, vérifiez la ' . ecran('Code page') . ' de l\'import : <strong>' . h($code_page[0])
+        . '</strong> (n° ' . h($code_page[1]) . ').'
+        . ($code_page[1] === '65001'
+            ? ' Si DGI ne propose pas 65001, passez l\'encodage sur <em>Windows (ANSI)</em> dans '
+              . ($peut_regler ? '<a href="parametres.php#balance" class="text-primary underline">Paramètres → Balance-étiqueteuse</a>' : 'Paramètres')
+              . ' et la page de codes sur 1252 dans DGI, puis renvoyez le fichier.'
+            : '')],
       ['Les titres des colonnes apparaissent comme un produit', 'Dans DGI, ' . ecran('Initial line') . ' doit valoir 1.'],
       ['Un produit retiré ici reste sur la balance', 'Le fichier ne contient que les produits actifs : supprimez l\'ancien article dans DFS.'],
       ['L\'agent indique un échec', 'La raison s\'affiche en haut de cette page ; le détail est dans <code>agent-balance.log</code>, dans le dossier de l\'agent.'],

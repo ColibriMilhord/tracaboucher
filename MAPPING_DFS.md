@@ -20,7 +20,7 @@ fichier dans DFS puis l'envoie à la balance.
 | Text 01 à Text 08 : 24 caractères | D'où l'agrément sur sa propre ligne, sous « Abattu en » et « Découpé en ». |
 | G Text : 2 048 caractères | Reçoit la liste d'ingrédients. |
 | Prix avec un point décimal (`11.30`) | Type DGI *Numeric with dot as decimal mark*. |
-| UTF-8 avec BOM, fins de ligne CRLF | Repli ANSI (Windows-1252) dans Paramètres si les accents sortent mal. |
+| UTF-8 avec BOM, fins de ligne CRLF | DGI lit selon la *Code page* de l'import (colonne `CodePage` de `dat_importacion`, absente du manuel de 2015) : 65001. La base DFS est elle-même en UTF-8. Repli ANSI (Windows-1252, page 1252) dans Paramètres. |
 
 RGI écarte toute ligne dont une donnée est invalide (§ 5.2.6) : l'application coupe
 elle-même ce qui dépasse et le signale à l'étape 1 de l'Assistant balance, plutôt
@@ -60,7 +60,7 @@ le code-barres imprimé à partir du PLU, du poids et du prix.
 
 | Menu | Réglage |
 |---|---|
-| Imports → Créer | Name `TracaBoucher` · File type `Articles` · Initial line `1` · Fields separator `;` · Operation type `Data to be added/eliminated` · Load file `C:\DibalImport` · File to import `ARTICLES*.TXT` |
+| Imports → Créer | Name `TracaBoucher` · File type `Articles` · Initial line `1` · Fields separator `;` · Code page `65001` (UTF-8) · Operation type `Data to be added/eliminated` · Load file `C:\DibalImport` · File to import `ARTICLES*.TXT` |
 | (même écran) | choisir un ARTICLES.TXT → *Generate List of Fields* → *Continue* → associer les champs du tableau ci-dessus |
 | Import configuration | actif toute la journée ; « *Communicate importation with scales selected in DFS* » décoché |
 | Activating imports | cocher TracaBoucher |
