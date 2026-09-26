@@ -2,6 +2,7 @@
 $page_active = 'parametres';
 $page_title  = 'Paramètres';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/dfs.php';
 $moi = exiger_admin();
 
 $pdo = db();
@@ -20,6 +21,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_reglages'])) {
         if (isset($_POST[$cle])) $st->execute([$cle, trim($_POST[$cle])]);
     }
     header('Location: parametres.php?msg=reglages');
+    exit;
+}
+
+// ── Lecture du fichier ARTICLES.TXT par DFS
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_balance'])) {
+    $encodage = ($_POST['dfs_encodage'] ?? '') === 'ansi' ? 'ansi' : 'utf8';
+    // Formats d'étiquette de la balance : 1 à 60 (DGI) ; ceux créés dans DLD commencent à 21.
+    $format = trim($_POST['dfs_format_etiquette'] ?? '');
+    if ($format !== '' && (!ctype_digit($format) || (int)$format < 1 || (int)$format > 60)) {
+        header('Location: parametres.php?msg=format_ko#balance');
+        exit;
+    }
+    $st = $pdo->prepare('INSERT INTO reglages (cle, valeur) VALUES (?,?) ON DUPLICATE KEY UPDATE valeur=VALUES(valeur)');
+    $st->execute(['dfs_encodage', $encodage]);
+    $st->execute(['dfs_format_etiquette', $format === '' ? '' : (string)(int)$format]);
+    header('Location: parametres.php?msg=balance#balance');
     exit;
 }
 
@@ -71,8 +88,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save_type'])) {
 }
 
 $flashes = ['reglages' => 'Réglages enregistrés.', 'type' => 'Type de matière enregistré.',
-            'token' => 'Nouveau jeton généré.', 'token_off' => 'Jeton révoqué.'];
+            'token' => 'Nouveau jeton généré.', 'token_off' => 'Jeton révoqué.',
+            'balance' => 'Réglages de la balance enregistrés.'];
 $ok = $flashes[$_GET['msg'] ?? ''] ?? '';
+if (($_GET['msg'] ?? '') === 'format_ko') $msg = 'Le n° de format d\'étiquette va de 1 à 60 (laisser vide pour ne pas l\'envoyer).';
 
 $types  = $pdo->query('SELECT * FROM types_matiere ORDER BY ordre, libelle')->fetchAll();
 $edit   = null;
@@ -243,11 +262,39 @@ require __DIR__ . '/includes/header.php';
   </form>
 </section>
 
-<section class="bg-surface rounded-xl border border-outline-variant p-5 mt-6">
+<section id="balance" class="bg-surface rounded-xl border border-outline-variant p-5 mt-6">
   <h3 class="font-headline-md font-bold mb-1">Balance-étiqueteuse</h3>
-  <p class="text-xs text-on-surface-variant mb-4">Fichiers à faire lire par DGI/RGI côté DFS.</p>
+  <p class="text-xs text-on-surface-variant mb-4">
+    Comment DFS lit le fichier ARTICLES.TXT. La marche à suivre complète est dans
+    l'<a href="guide.php" class="text-primary underline font-semibold">Assistant balance</a>.
+  </p>
+  <form method="post" class="grid sm:grid-cols-2 gap-4 mb-4">
+    <div>
+      <label class="block text-sm font-semibold mb-1">Encodage du fichier</label>
+      <select name="dfs_encodage" class="w-full rounded-xl border-outline-variant">
+        <option value="utf8" <?= reglage('dfs_encodage') !== 'ansi' ? 'selected' : '' ?>>UTF-8 (conseillé)</option>
+        <option value="ansi" <?= reglage('dfs_encodage') === 'ansi' ? 'selected' : '' ?>>Windows (ANSI)</option>
+      </select>
+      <p class="text-xs text-on-surface-variant mt-1">
+        À changer seulement si les accents sortent mal sur l'étiquette (« Ã© » au lieu de « é »).
+      </p>
+    </div>
+    <div>
+      <label class="block text-sm font-semibold mb-1">N° du format d'étiquette</label>
+      <input type="text" name="dfs_format_etiquette" inputmode="numeric" maxlength="2"
+             value="<?= h(reglage('dfs_format_etiquette')) ?>" placeholder="vide = choisi dans DFS"
+             class="w-full rounded-xl border-outline-variant">
+      <p class="text-xs text-on-surface-variant mt-1">
+        Le n° donné à l'étiquette lors de son envoi depuis DLD (21 ou plus). Renseigné, il est
+        envoyé avec chaque produit : champ « Label format » dans DGI.
+      </p>
+    </div>
+    <div class="sm:col-span-2">
+      <button name="save_balance" value="1" class="bg-primary text-on-primary rounded-full px-6 py-3 font-bold text-sm">Enregistrer</button>
+    </div>
+  </form>
   <a href="exports.php" class="bg-surface-container-low rounded-xl px-4 py-3 text-sm font-semibold inline-flex items-center gap-2">
-    <span class="material-symbols-outlined">download</span>Articles, lots du jour, Articulo
+    <span class="material-symbols-outlined">download</span>ARTICLES.TXT et listes de contrôle
   </a>
   <p class="text-xs text-on-surface-variant mt-4">
     <a class="text-primary underline font-semibold" href="maj.php">Mise à jour de la base</a>
@@ -296,17 +343,14 @@ require __DIR__ . '/includes/header.php';
 </section>
 
 <!-- Pont automatique : jeton pour l'agent installé sur le PC de la balance -->
-<?php
-$token = reglage('token_export');
-$base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' : 'http')
-          . '://' . ($_SERVER['HTTP_HOST'] ?? 'causselot.fr')
-          . rtrim(dirname($_SERVER['SCRIPT_NAME'] ?? '/tracabilite/'), '/\\');
-?>
+<?php $token = reglage('token_export'); ?>
 <section class="bg-surface rounded-xl border border-outline-variant p-5 mt-6">
   <h3 class="font-headline-md font-bold mb-1">Pont automatique vers la balance</h3>
   <p class="text-xs text-on-surface-variant mb-4">
     Permet à l'agent installé sur le PC de l'atelier de récupérer les produits tout seul,
-    sans connexion manuelle. Ne partagez ce jeton qu'avec cet agent.
+    sans connexion manuelle. Ne partagez ce jeton qu'avec cet agent. Le plus simple :
+    télécharger l'agent depuis l'<a href="guide.php#recuperer" class="text-primary underline font-semibold">Assistant balance</a>,
+    le lien y est déjà.
   </p>
 
   <?php if ($token === ''): ?>
@@ -322,7 +366,7 @@ $base_url = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off' ? 'https' :
   </div>
   <div class="bg-surface-container-low rounded-xl p-3 mb-3">
     <div class="text-xs text-on-surface-variant mb-1">URL de récupération (à configurer dans l'agent)</div>
-    <code class="text-xs break-all"><?= h($base_url) ?>/export.php?type=dfs_articulo&amp;token=<?= h($token) ?></code>
+    <code class="text-xs break-all"><?= h(url_recuperation($token)) ?></code>
   </div>
   <div class="flex gap-2">
     <form method="post" onsubmit="return confirm('Générer un nouveau jeton ? L\'ancien cessera de fonctionner.')">

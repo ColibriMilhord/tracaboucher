@@ -7,27 +7,30 @@ se contente de déposer un fichier et de faire des sauvegardes.
 
 ## Ce qu'il fait, à chaque passage
 
-1. Télécharge le fichier des produits depuis l'application (lien + jeton sécurisé).
-2. Vérifie que le téléchargement est valide (sinon il ne remplace rien).
+1. Télécharge ARTICLES.TXT depuis l'application (lien + jeton sécurisé).
+2. Vérifie que c'est bien ce fichier (sinon il ne remplace rien).
 3. Sauvegarde l'ancien fichier, et fait une copie de la base DFS (lecture seule).
 4. Dépose le nouveau fichier là où DFS le lira (DGI/RGI).
 5. Écrit ce qu'il a fait dans `agent-balance.log`.
 
-DFS importe ensuite ce fichier — soit automatiquement s'il surveille le dossier
-(RGI), soit en un clic dans DGI. C'est votre installateur qui règle ce point une
-fois.
+RGI (livré avec DFS) importe ensuite ce fichier tout seul, une fois l'import
+décrit dans DGI. Les réglages DGI, RGI et DLD sont détaillés dans l'application,
+**Assistant balance**, et dans `MAPPING_DFS.md`.
 
 ## Installation (une seule fois)
 
-1. Copiez le dossier `agent-balance` sur le PC de l'atelier (celui où est DFS),
-   par ex. dans `C:\TracaBoucher\agent-balance`.
-2. Dans l'application web : **Paramètres → Pont automatique → Générer un jeton**,
-   et copiez la ligne **URL de récupération**.
-3. **Double-cliquez sur `installer.bat`** (idéalement clic droit → *Exécuter en tant
-   qu'administrateur*, pour créer la tâche planifiée). Il pose trois questions :
-   - collez l'**URL de récupération** ;
-   - indiquez le **dossier surveillé par DFS** (demandez-le à votre installateur) ;
-   - le **mot de passe MySQL** de DFS pour la sauvegarde (facultatif).
+1. Dans l'application : **Assistant balance → Télécharger l'agent** (administrateur).
+   Le zip contient déjà l'URL de récupération et son jeton (`url.txt`).
+2. Sur le PC de l'atelier (celui où est DFS) : clic droit sur le zip → *Extraire tout*,
+   par ex. dans `C:\TracaBoucher`.
+3. Clic droit sur `installer.bat` → *Exécuter en tant qu'administrateur* (pour créer
+   la tâche planifiée). Si Windows affiche « Windows a protégé votre ordinateur » :
+   *Informations complémentaires* → *Exécuter quand même*. Deux questions :
+   - le **dossier surveillé par RGI** (Entrée = `C:\DibalImport`) ;
+   - le **mot de passe MySQL** de DFS pour la sauvegarde (facultatif, Entrée = ignorer).
+
+   Sans `url.txt` (dossier copié à la main), il demande aussi de coller l'URL de
+   **Paramètres → Pont automatique**.
 
    Il configure tout, planifie l'agent **toutes les 2 minutes**, fait un test et
    affiche **OK**, ou la **raison** en cas de problème.
@@ -63,12 +66,15 @@ dans son dossier des fichiers traités.
   révoque et se régénère à tout moment depuis Paramètres.
 - L'agent ne fait **aucune écriture** dans la base de DFS. La seule opération sur
   la base est un `mysqldump` de sauvegarde (lecture).
-- `config.ps1` contient le jeton et le mot de passe MySQL : gardez ce fichier sur
-  le PC de l'atelier uniquement, ne le partagez pas.
+- `config.ps1` et `url.txt` contiennent le jeton (et `config.ps1` le mot de passe
+  MySQL) : gardez-les sur le PC de l'atelier uniquement, ne les partagez pas. Même
+  chose pour le zip téléchargé.
 
 ## En cas de souci
 
 Tout est tracé dans `agent-balance.log`. Les messages `[ERREUR]` expliquent la
-cause (jeton invalide, dossier introuvable, pas de réseau…). Le fichier destiné à
+cause (jeton invalide, dossier introuvable, pas de réseau…). « Réponse inattendue »
+après une mise à jour de l'application : l'agent date d'avant la version 2.7 et ne
+reconnaît pas le nouveau fichier, retéléchargez-le et relancez `installer.bat`. Le fichier destiné à
 DFS n'est **jamais** remplacé si le téléchargement échoue : la dernière version
 valide reste en place.

@@ -62,13 +62,14 @@ try {
         if ($d -and -not (Test-Path $d)) { New-Item -ItemType Directory -Force -Path $d | Out-Null }
     }
 
-    $tmp = Join-Path $env:TEMP ("traca_{0}.csv" -f (Get-Date -Format 'yyyyMMddHHmmss'))
+    $tmp = Join-Path $env:TEMP ("traca_{0}.txt" -f (Get-Date -Format 'yyyyMMddHHmmss'))
     Invoke-WebRequest -Uri $Config.Url -OutFile $tmp -UseBasicParsing -TimeoutSec 60
 
     if (-not (Test-Path $tmp) -or (Get-Item $tmp).Length -eq 0) { throw "Telechargement vide." }
+    # ARTICLES.TXT commence par les noms des champs DGI (voir includes/dfs.php).
     $premiere = Get-Content -Path $tmp -TotalCount 1 -Encoding UTF8
-    if ($premiere -notmatch 'IdArticulo' -or $premiere -notmatch 'EANScanner') {
-        throw "Reponse inattendue (pas l'export balance). Jeton invalide ou site indisponible."
+    if ($premiere -notmatch '^\W*Code;Type;Name;') {
+        throw "Reponse inattendue (pas le fichier ARTICLES.TXT). Jeton invalide, site indisponible, ou application pas encore a jour."
     }
     $contenu  = Get-Content -Path $tmp -Raw -Encoding UTF8
     # Une ligne par produit, plus la ligne d'en-tetes.
@@ -91,7 +92,7 @@ try {
     $horo = Get-Date -Format 'yyyyMMdd_HHmmss'
 
     if (Test-Path $Config.Destination) {
-        Copy-Item -Path $Config.Destination -Destination (Join-Path $Config.Backups ("articles_{0}.csv" -f $horo)) -Force
+        Copy-Item -Path $Config.Destination -Destination (Join-Path $Config.Backups ("articles_{0}.txt" -f $horo)) -Force
     }
 
     if ($Config.DumpAvant -and $Config.MysqlDump -and (Test-Path $Config.MysqlDump)) {

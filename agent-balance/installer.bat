@@ -14,11 +14,17 @@ echo vers l'etiqueteuse Dibal. Trois questions, puis c'est fini.
 echo.
 
 echo --- 1/3 : le lien de recuperation --------------------------
-echo Dans l'application : Parametres ^> Pont automatique.
-echo Copiez la ligne "URL de recuperation" et collez-la ici.
-echo.
 set "AGENT_URL="
-set /p "AGENT_URL=Coller l'URL puis Entree : "
+rem url.txt accompagne l'agent telecharge depuis l'Assistant balance.
+if exist "%~dp0url.txt" set /p AGENT_URL=<"%~dp0url.txt"
+if defined AGENT_URL (
+  echo Lien fourni avec l'agent ^(url.txt^) : rien a coller.
+) else (
+  echo Dans l'application : Parametres ^> Pont automatique.
+  echo Copiez la ligne "URL de recuperation" et collez-la ici.
+  echo.
+  set /p "AGENT_URL=Coller l'URL puis Entree : "
+)
 if not defined AGENT_URL (
   echo.
   echo   ^> Aucune URL saisie. Installation annulee.

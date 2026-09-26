@@ -183,7 +183,9 @@ require __DIR__ . '/includes/header.php';
       <label class="block text-sm font-semibold mb-1">Libellé court</label>
       <input type="text" name="libelle_court" maxlength="40" value="<?= h($edit['libelle_court'] ?? '') ?>"
              placeholder="tel qu'imprimé sur l'étiquette" class="w-full rounded-xl border-outline-variant">
-      <p class="text-xs text-on-surface-variant mt-1">40 caractères maximum.</p>
+      <p class="text-xs text-on-surface-variant mt-1">
+        La balance l'affiche sur 2 lignes de 20 caractères, coupées entre deux mots.
+      </p>
     </div>
     <div>
       <label class="block text-sm font-semibold mb-1">Famille</label>

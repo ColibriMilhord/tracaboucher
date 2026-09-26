@@ -100,7 +100,9 @@ matière première**. La catégorie « Viande » déclenche l'alerte de tempéra
 | `tracabilite.php` | Recherche ascendante et descendante |
 | `etiquette.php` | Vue imprimable d'un n° de lot |
 | `exports.php` | Écran des exports — registres et fichiers balance |
-| `export.php` | Génération des CSV (fiche de lot, registres, DFS) |
+| `export.php` | Génération des CSV (fiche de lot, registres) et d'ARTICLES.TXT pour DFS |
+| `guide.php` | Assistant balance : du fichier à l'étiquette (DGI, RGI, DLD) |
+| `agent.php` | Téléchargement de l'agent balance déjà configuré — **admin** |
 | `parametres.php` | Types de matière, préfixe, agréments, jeton — **admin** |
 | `utilisateurs.php` | Comptes opérateurs — **admin** |
 | `archive_v1/` | Ancienne version (espèces / ingrédients / plats), non accessible |
@@ -157,16 +159,19 @@ par un autre commerce imposerait de vrais codes GS1, auquel cas seule la colonne
 **Pages** : `produits.php` (admin) pour le catalogue, `maj.php` (admin) pour appliquer les
 migrations de `migrations/` — sans effet si elles sont déjà passées, donc relançable.
 
-**Exports vers DFS**, depuis Paramètres ou la page Produits :
+**Vers DFS**, un seul fichier : `export.php?type=dfs_articulo` produit **ARTICLES.TXT**
+(`includes/dfs.php`), au format que lit **DGI** (livré avec DFS) : point-virgule sans
+guillemets, libellé sur 2 × 20 caractères, mentions sur 24, prix à point décimal.
+L'import se décrit une fois dans DGI ; **RGI** l'applique ensuite à chaque fichier déposé
+dans `C:\DibalImport`, par l'agent (`agent-balance/`) ou à la main. Correspondance des
+colonnes et réglages : `MAPPING_DFS.md` ; marche à suivre : **Assistant balance**.
+
+Deux listes de contrôle, pour Excel, sur la page Exports :
 
 | Export | Contenu |
 |---|---|
-| `export.php?type=dfs_articles` | PLU, EAN13, libellés, famille, prix/kg, durée de vie, classe de traçabilité |
+| `export.php?type=dfs_articles` | PLU, EAN13, libellés, famille, prix/kg, durée de vie, bio |
 | `export.php?type=dfs_lots` | lots fabriqués du jour, avec PLU, DLC, conditionnement et lots d'entrée utilisés |
-
-Ces fichiers sont en CSV point-virgule / UTF-8. Le mapping des colonnes se paramètre une
-seule fois dans **DGI** (livré avec DFS) ; **RGI** applique ensuite l'import vers la LP-545.
-Le format des colonnes est donc libre côté application.
 
 ## Bio : composition et taux (RUE 2018/848)
 
@@ -182,9 +187,9 @@ des deux termes du ratio, conformément au règlement. Trois issues :
 | 0 < taux < 95 % | astérisques dans la liste d'ingrédients uniquement — ni logo, ni allégation |
 | 0 % | aucune mention bio |
 
-L'export `dfs_articles` porte `MENTION_BIO`, `TAUX_BIO`, `INGREDIENTS` (poids décroissant,
-astérisques sur les ingrédients bio) et, **seulement au-dessus du seuil**, le code
-certificateur et l'origine agricole — un produit sous le seuil ne peut donc pas recevoir
-par erreur les métadonnées de l'Eurofeuille.
+ARTICLES.TXT porte les ingrédients (poids décroissant, astérisques bio) et, **seulement
+au-dessus du seuil**, le code certificateur et l'origine agricole — un produit sous le
+seuil ne peut donc pas recevoir par erreur les métadonnées de l'Eurofeuille. La liste
+`dfs_articles` y ajoute `MENTION_BIO` et `TAUX_BIO`, pour contrôle.
 
 Le code de l'organisme certificateur et l'origine agricole se règlent dans Paramètres.

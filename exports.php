@@ -47,13 +47,14 @@ $sections = [
     ],
     [
         'titre' => 'Balance-étiqueteuse',
-        'aide'  => 'Fichiers à faire lire par DGI / RGI côté DFS.',
+        'aide'  => 'ARTICLES.TXT est le seul fichier que DFS importe (DGI / RGI) ; la marche à suivre '
+                 . 'est dans l\'Assistant balance. Les deux autres sont des listes de contrôle, pour Excel.',
         'liens' => [
-            ['dfs_articulo', 'Articles au format Articulo', 'sync_alt', null],
-            ['dfs_articles', 'Articles (PLU / EAN)', 'sell',
+            ['dfs_articulo', 'ARTICLES.TXT pour DFS', 'sync_alt',
              $nb_produits === null ? null : $nb_produits . ' produit(s) actif(s)'],
+            ['dfs_articles', 'Liste des produits : PLU, EAN, bio', 'sell', 'Contrôle, pour Excel'],
             ['dfs_lots', 'Lots fabriqués du jour', 'today',
-             $nb_lots_jour === null ? null : $nb_lots_jour . ' lot(s) aujourd\'hui'],
+             $nb_lots_jour === null ? null : $nb_lots_jour . ' lot(s) aujourd\'hui — pour Excel'],
         ],
     ],
 ];
@@ -93,12 +94,17 @@ require __DIR__ . '/includes/header.php';
 <section class="bg-surface rounded-xl border border-outline-variant p-5">
   <h3 class="font-headline-md font-bold mb-1">Pont automatique</h3>
   <p class="text-xs text-on-surface-variant mb-3">
-    Le PC de la balance récupère les fichiers Articulo tout seul, sans session, via un jeton.
-    Le réglage vit dans les paramètres.
+    Le PC de la balance peut récupérer ARTICLES.TXT tout seul : l'agent s'installe depuis
+    l'Assistant balance, le jeton qu'il utilise se gère dans les paramètres.
   </p>
-  <a href="parametres.php" class="bg-surface-container text-on-surface rounded-full px-5 py-2.5 font-bold text-sm inline-flex items-center gap-2">
-    <span class="material-symbols-outlined text-base">settings</span>Paramètres
-  </a>
+  <div class="flex flex-wrap gap-2">
+    <a href="guide.php#recuperer" class="bg-primary text-on-primary rounded-full px-5 py-2.5 font-bold text-sm inline-flex items-center gap-2">
+      <span class="material-symbols-outlined text-base">help</span>Assistant balance
+    </a>
+    <a href="parametres.php" class="bg-surface-container text-on-surface rounded-full px-5 py-2.5 font-bold text-sm inline-flex items-center gap-2">
+      <span class="material-symbols-outlined text-base">settings</span>Paramètres
+    </a>
+  </div>
 </section>
 <?php endif ?>
 
