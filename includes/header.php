@@ -100,6 +100,7 @@
       <?php
       $liens = [
         ['dashboard',    'index.php',        'dashboard',       'Tableau de bord'],
+        ['atelier',      'atelier.php',      'conveyor_belt',   'Atelier'],
         ['entrees',      'entrees.php',      'move_to_inbox',   'Entrées'],
         ['fabrications', 'fabrications.php', 'outbox',          'Fabrications'],
         ['tracabilite',  'tracabilite.php',  'account_tree',    'Traçabilité'],
@@ -109,6 +110,7 @@
       if (est_admin($moi)) {
         $liens[] = ['produits',    'produits.php',    'inventory', 'Produits'];
         $liens[] = ['parametres',  'parametres.php',  'settings',  'Paramètres'];
+        $liens[] = ['materiel',    'materiel.php',    'devices',   'Matériel'];
       }
       if (defined('CAUSSELOT_URL') && CAUSSELOT_URL !== '') {
         $liens[] = ['causselot', CAUSSELOT_URL, 'storefront', 'Portail CAUSSELOT'];

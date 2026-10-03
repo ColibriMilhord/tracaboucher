@@ -2,6 +2,7 @@
 $page_active = 'fabrications';
 $page_title  = 'Fabrications';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/atelier.php';
 $moi = exiger_connexion();
 
 $pdo    = db();
@@ -344,7 +345,9 @@ elseif ($action === 'voir' && $id):
   <dl class="grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
     <?php
     $lignes = [
-      'Quantité fabriquée' => fmt_qte((float)$s['quantite'], $s['unite']),
+      'Quantité fabriquée' => quantite_connue($s) === null
+                                ? 'pas encore pesée — lot en cours'
+                                : fmt_qte((float)$s['quantite'], $s['unite']),
       'Conditionnement'    => LIB_CONDITIONNEMENT[$s['conditionnement']] ?? '—',
       'Conservation'       => LIB_CONSERVATION[$s['conservation']] ?? '—',
       'DLC / DDM'          => fmt_date($s['dlc']),
@@ -448,12 +451,20 @@ else:
   <?php foreach ($fabs as $f): ?>
   <a href="fabrications.php?action=voir&id=<?= (int)$f['id'] ?>" class="bg-surface rounded-xl border border-outline-variant p-4 flex items-center gap-3 hover:bg-surface-container-low">
     <div class="flex-1 min-w-0">
-      <div class="lot-badge font-bold text-primary"><?= h($f['num_lot']) ?></div>
+      <div class="lot-badge font-bold text-primary flex items-center gap-2">
+        <?= h($f['num_lot']) ?>
+        <?php if (lot_ouvert($f)): ?>
+        <span class="bg-secondary-container text-on-secondary-container rounded-full px-2 py-0.5 text-xs font-semibold">en cours</span>
+        <?php endif ?>
+      </div>
       <div class="text-sm truncate"><?= h($f['produit']) ?></div>
       <div class="text-xs text-on-surface-variant"><?= fmt_date($f['date_fabrication']) ?> · <?= (int)$f['nb_sources'] ?> lot(s) source</div>
     </div>
     <div class="text-right text-sm">
-      <div class="font-semibold"><?= fmt_qte((float)$f['quantite'], $f['unite']) ?></div>
+      <div class="font-semibold">
+        <?php $q = quantite_connue($f); ?>
+        <?= $q === null ? '<span class="text-on-surface-variant font-normal">à peser</span>' : fmt_qte($q, $f['unite']) ?>
+      </div>
       <div class="text-xs text-on-surface-variant"><?= LIB_CONDITIONNEMENT[$f['conditionnement']] ?? '' ?> · <?= LIB_CONSERVATION[$f['conservation']] ?? '' ?></div>
     </div>
   </a>

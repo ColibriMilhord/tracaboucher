@@ -4,8 +4,8 @@
 <nav class="fixed bottom-0 w-full z-50 md:hidden bg-surface border-t border-outline-variant flex justify-around items-center nav-basse pb-safe px-2">
   <?php foreach ([
       ['dashboard',    'index.php',        'dashboard',     'Accueil'],
+      ['atelier',      'atelier.php',      'conveyor_belt', 'Atelier'],
       ['entrees',      'entrees.php',      'move_to_inbox', 'Entrées'],
-      ['fabrications', 'fabrications.php', 'outbox',        'Fabric.'],
       ['tracabilite',  'tracabilite.php',  'account_tree',  'Traça'],
       ['exports',      'exports.php',      'download',      'Exports'],
   ] as [$k,$url,$icone,$lib]): $on = $page_active === $k; ?>

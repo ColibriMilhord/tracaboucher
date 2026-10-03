@@ -39,6 +39,52 @@ function Resultat([string]$etat, [string]$message, [int]$nb) {
     }
 }
 
+# ============================================================
+#  Inventaire de la base DFS, une fois par jour.
+#
+#  Uniquement des noms de tables et des comptages : de quoi dire a
+#  l'application ou DFS range les pesees, sans copier la moindre
+#  donnee. Echoue sans consequence si le client mysql est absent.
+# ============================================================
+function Inventaire {
+    if (-not $script:PingUrl -or -not $Config.MysqlDump) { return }
+    $marqueur = Join-Path $racine 'inventaire.txt'
+    if (Test-Path $marqueur) {
+        $age = (New-TimeSpan -Start (Get-Item $marqueur).LastWriteTime -End (Get-Date)).TotalHours
+        if ($age -lt 24) { return }
+    }
+
+    $mysql = Join-Path (Split-Path -Parent $Config.MysqlDump) 'mysql.exe'
+    if (-not (Test-Path $mysql)) {
+        Journal 'INFO' 'Client mysql absent : inventaire ignore.'
+        return
+    }
+
+    try {
+        $requete = "SELECT TABLE_NAME, IFNULL(TABLE_ROWS,0) FROM information_schema.TABLES WHERE TABLE_SCHEMA='$($Config.DbName)' ORDER BY TABLE_NAME"
+        $sortie = & $mysql "--host=$($Config.DbHost)" "--port=$($Config.DbPort)" "--user=$($Config.DbUser)" `
+                           "--password=$($Config.DbPass)" '--batch' '--skip-column-names' `
+                           '--default-character-set=utf8' "--execute=$requete" 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $sortie) {
+            Journal 'ATTENTION' 'Inventaire : la base n a pas repondu.'
+            return
+        }
+        # Le client renvoie des colonnes separees par des tabulations ;
+        # l'application attend « nom;lignes ».
+        $lignes = ($sortie -join "`n") -replace "`t", ';'
+
+        $url = $script:PingUrl -replace 'agent_ping\.php$', 'agent_inventaire.php'
+        Invoke-WebRequest -Uri $url -Method Post -TimeoutSec 60 -UseBasicParsing -Body @{
+            token = $script:Token; base = $Config.DbName; tables = $lignes
+        } | Out-Null
+
+        Set-Content -Path $marqueur -Value (Get-Date -Format 's') -Encoding ascii
+        Journal 'OK' ("Inventaire transmis ({0} table(s))." -f ($sortie | Measure-Object).Count)
+    } catch {
+        Journal 'ATTENTION' "Inventaire impossible (sans consequence) : $($_.Exception.Message)"
+    }
+}
+
 $script:PingUrl = $null
 $script:Token   = $null
 
@@ -76,6 +122,7 @@ try {
     if ($hash -eq $ancien) {
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue
         Journal 'INFO' 'Aucun changement depuis la derniere synchro.'
+        Inventaire
         exit 0
     }
 
@@ -106,6 +153,7 @@ try {
 
     Journal 'OK' ("Fichier depose pour la balance : {0}" -f $Config.Destination)
     Resultat 'ok' 'Produits transmis a la balance.' $nbLignes
+    Inventaire
     exit 0
 }
 catch {

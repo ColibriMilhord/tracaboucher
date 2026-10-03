@@ -2,6 +2,7 @@
 $page_active = 'dashboard';
 $page_title  = 'Tableau de bord';
 require_once __DIR__ . '/includes/auth.php';
+require_once __DIR__ . '/includes/atelier.php';
 $moi = exiger_connexion();
 
 $pdo = db();
@@ -43,12 +44,24 @@ require __DIR__ . '/includes/header.php';
     <span class="material-symbols-outlined text-4xl">move_to_inbox</span>
     <span class="font-bold text-center leading-tight">Nouvelle<br>entrée</span>
   </a>
-  <a href="fabrications.php?action=nouveau"
-     class="bg-secondary text-on-secondary rounded-xl p-5 flex flex-col items-center gap-2 active:scale-[.98] transition">
-    <span class="material-symbols-outlined text-4xl">outbox</span>
-    <span class="font-bold text-center leading-tight">Nouvelle<br>fabrication</span>
+  <a href="atelier.php"
+     class="bg-secondary text-on-secondary rounded-xl p-5 flex flex-col items-center gap-2 active:scale-[.98] transition relative">
+    <span class="material-symbols-outlined text-4xl">conveyor_belt</span>
+    <span class="font-bold text-center leading-tight">Atelier</span>
+    <?php $ouverts = nb_lots_ouverts(); if ($ouverts): ?>
+    <span class="absolute top-2 right-2 bg-on-secondary text-secondary rounded-full min-w-6 h-6 px-2
+                 flex items-center justify-center text-sm font-extrabold"><?= $ouverts ?></span>
+    <?php endif ?>
   </a>
 </div>
+
+<?php if (($ouverts ?? 0) > 0): ?>
+<div class="bg-secondary-container text-on-secondary-container rounded-xl px-4 py-3 mb-8 text-sm flex items-center gap-2">
+  <span class="material-symbols-outlined">pending</span>
+  <span class="flex-1"><?= $ouverts ?> lot(s) ouvert(s) — à clôturer en fin de fabrication.</span>
+  <a href="atelier.php" class="font-bold underline shrink-0">Voir</a>
+</div>
+<?php endif ?>
 
 <!-- Chiffres du mois -->
 <div class="grid grid-cols-3 gap-3 mb-8">

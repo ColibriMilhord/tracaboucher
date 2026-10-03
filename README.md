@@ -75,6 +75,86 @@ Convention : `MAJEURE.MINEURE.CORRECTIF` — mineure pour une
 fonctionnalité ou la refonte d'un écran, correctif pour un bug ou un
 ajustement d'ergonomie.
 
+## Atelier : ouvrir, étiqueter, clôturer
+
+La question pratique du boucher au tablier : pour étiqueter, il faut le
+numéro de lot — mais le numéro n'existait qu'une fois la fabrication
+saisie en entier, poids produit compris. Donc il fallait soit étiqueter
+à l'aveugle, soit ré-étiqueter.
+
+**`atelier.php`**, trois étapes dans l'ordre où le travail se fait :
+
+1. **Ouvrir un lot** — produit et matières premières, rien d'autre. Le
+   numéro apparaît aussitôt, en grand, avec le bouton d'étiquette
+   dessous. Conditionnement, conservation et DLC viennent du référentiel
+   produits (`dlc_jours`) : ce sont des caractéristiques du produit, pas
+   des questions à poser au tablier.
+2. **Étiqueter** — tous les lots ouverts, un appui par étiquette, autant
+   de fois qu'il y a de barquettes.
+3. **Clôturer** — poids produit et DLC, en fin de fabrication. Le lot
+   entre alors au registre.
+
+**Plusieurs lots cohabitent**, c'est le quotidien de l'atelier. La
+numérotation suit la règle déjà en place : code du jour + occurrence
+(`031026-1`, `-2`, `-3`). La catégorie n'entre pas dans le numéro — un
+numéro de lot ne doit jamais changer, les familles de produits si — mais
+elle s'affiche collée à lui partout.
+
+**Tant qu'un lot est ouvert, sa quantité n'est pas une donnée.** Ni
+l'étiquette ni le registre ne l'affichent : `statut` porte le sens, pas
+une valeur à zéro. La colonne `quantite` n'a volontairement pas été
+modifiée par la migration — son type exact ne figure pas dans le dépôt,
+et une colonne de registre réglementaire ne se retouche pas à l'aveugle.
+
+**Deux personnes en même temps.** L'écran interroge `atelier_etat.php`
+toutes les 15 secondes et annonce par un bandeau le lot qu'un collègue
+vient d'ouvrir, sans recharger la page sous les doigts de celui qui
+saisit. Et si deux personnes clôturent le même lot, la seconde est
+prévenue : la clôture est un `UPDATE … WHERE statut='ouvert'`, dont le
+`rowCount` à zéro dit que quelqu'un est passé avant.
+
+## Saisie différée : importer les étiquettes de la balance
+
+L'autre parcours : on étiquette d'abord à la balance, on saisit ensuite.
+**`import_etiquettes.php`**, un écran par manipulation.
+
+1. **L'agent** — « est-il installé sur le PC de l'atelier ? ». Répondre
+   oui clôt le sujet pour cet utilisateur (`reglages_utilisateur`) ;
+   répondre non mène à l'installation guidée.
+2. **Le fichier** — où le trouver dans DFS, puis on le dépose.
+3. **Les colonnes** — reconnues par les intitulés (français et espagnol :
+   DFS est un logiciel Dibal), sinon par le contenu, sinon corrigées sur
+   place. Le fichier reste en session, donc on corrige sans redéposer.
+4. **Rattacher** — les étiquettes rejoignent leur lot ; celles qui ne
+   correspondent à rien restent visibles et se rattachent à la main.
+
+**Le numéro de lot naît dans TraçaBoucher, jamais à la balance.**
+L'import ne crée pas de lot : il le complète. Le poids pesé est ensuite
+proposé comme quantité produite à la clôture — plus rien à retaper.
+
+Le rattachement se fait sur le numéro de lot lu dans le fichier ; à
+défaut, sur le couple produit + date. **Deux lots du même produit ouverts
+le même jour ne sont jamais départagés automatiquement** : c'est
+précisément ce que l'occurrence sert à distinguer, et ce n'est pas à
+l'application d'en décider.
+
+Moteur de lecture : `includes/csv.php`, portage de celui éprouvé sur les
+relevés bancaires d'app.causselot.fr, généralisé aux rôles de colonnes.
+
+## Matériel : le PC de l'atelier
+
+**`materiel.php`** remplace le README qu'il fallait aller chercher dans
+le dépôt. Quatre étapes cochées au fur et à mesure : générer le jeton,
+télécharger `agent-balance.zip` (empaqueté à la volée depuis le dépôt,
+donc toujours à la version du serveur, et sans `config.ps1` qui porte les
+secrets du poste), lancer `installer.bat`, vérifier que l'agent répond.
+
+La page affiche aussi l'**inventaire de la base DFS** : l'agent liste une
+fois par jour les tables de `sys_datos_dfs` et leur volume, et les POSTe
+sur `agent_inventaire.php`. Uniquement des noms et des comptages, aucune
+donnée. C'est ce qui permettra de savoir où DFS range les pesées, et donc
+de remonter les étiquettes automatiquement — sans deviner un nom de table.
+
 ## Numérotation des lots
 
 | | Format | Exemple |

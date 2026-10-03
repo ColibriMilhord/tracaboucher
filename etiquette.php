@@ -23,9 +23,14 @@ if ($type === 'entree') {
     $l = sortie_par_id($id);
     if (!$l) { http_response_code(404); exit('Introuvable'); }
     $titre  = $l['produit'];
-    $infos  = [
-        'Fabriqué le'     => fmt_date($l['date_fabrication']),
-        'Quantité'        => fmt_qte((float)$l['quantite'], $l['unite']),
+    $infos  = ['Fabriqué le' => fmt_date($l['date_fabrication'])];
+    // Tant que le lot est ouvert, la quantité n'est pas connue : c'est la
+    // balance qui pèse chaque barquette. Afficher un zéro serait un
+    // mensonge sur une étiquette réglementaire.
+    if (($l['statut'] ?? 'cloture') !== 'ouvert') {
+        $infos['Quantité'] = fmt_qte((float)$l['quantite'], $l['unite']);
+    }
+    $infos += [
         'Conditionnement' => LIB_CONDITIONNEMENT[$l['conditionnement']] ?? '',
         'Conservation'    => LIB_CONSERVATION[$l['conservation']] ?? '',
         'DLC / DDM'       => fmt_date($l['dlc']),
