@@ -19,6 +19,7 @@ $moi = exiger_connexion();
 $pdo = db();
 $err = [];
 $msg = $_SESSION['etiq_msg'] ?? ''; unset($_SESSION['etiq_msg']);
+if (!empty($_SESSION['etiq_err'])) { $err[] = $_SESSION['etiq_err']; unset($_SESSION['etiq_err']); }
 
 if (!etiquettes_installe()) {
     require __DIR__ . '/includes/header.php'; ?>
@@ -117,7 +118,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enregistrer'])) {
                 ->execute(['fichier', $depot['fichier'], count($lu['lignes']), (int)$moi['id']]);
             $import_id = (int)$pdo->lastInsertId();
 
-            $lots = lots_ouverts();
+            $lots = lots_rattachables();
             $ins = $pdo->prepare('INSERT INTO etiquettes
                 (import_id, sortie_id, num_lot_fichier, produit, plu, date_etiquette, poids_kg, empreinte)
                 VALUES (?,?,?,?,?,?,?,?)');
@@ -150,6 +151,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['enregistrer'])) {
             header('Location: import_etiquettes.php?etape=4'); exit;
         }
     }
+}
+
+// ── Écran 4 : créer le lot que l'étiquette désigne, avec SON numéro
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['creer_lot'])) {
+    $ids = array_values(array_filter(array_map('intval', (array)($_POST['etiquette_id'] ?? []))));
+    $num     = trim((string)($_POST['num_lot'] ?? ''));
+    $produit = trim((string)($_POST['produit'] ?? ''));
+    $date    = trim((string)($_POST['date_etiquette'] ?? '')) ?: null;
+
+    try {
+        // Si le produit existe au référentiel, on le rattache : le lot
+        // hérite alors du PLU, de la DLC et du reste.
+        $produit_id = null;
+        if (referentiel_produits_pret()) {
+            $q = $pdo->prepare('SELECT id FROM produits WHERE LOWER(libelle) = LOWER(?) AND actif = 1 LIMIT 1');
+            $q->execute([$produit]);
+            $produit_id = ($r = $q->fetchColumn()) ? (int)$r : null;
+        }
+        $lot = creer_lot_depuis_etiquette($num, $produit, $date, $moi, $produit_id);
+        if ($ids) {
+            $marques = implode(',', array_fill(0, count($ids), '?'));
+            $pdo->prepare("UPDATE etiquettes SET sortie_id = ? WHERE id IN ($marques) AND sortie_id IS NULL")
+                ->execute(array_merge([$lot['id']], $ids));
+        }
+        $_SESSION['etiq_msg'] = 'Lot ' . $lot['num_lot'] . ' créé avec le numéro du fichier et '
+            . count($ids) . ' étiquette(s) rattachée(s). Il reste à indiquer ses matières premières.';
+    } catch (Throwable $e) {
+        $_SESSION['etiq_msg'] = '';
+        $_SESSION['etiq_err'] = $e->getMessage();
+    }
+    header('Location: import_etiquettes.php?etape=4'); exit;
 }
 
 // ── Écran 4 : rattachement manuel d'une étiquette orpheline
@@ -384,7 +416,7 @@ require __DIR__ . '/includes/header.php';
 <!-- ═══════════ ÉTAPE 4 — rattacher ═══════════ -->
 <?php
   $orphelines = etiquettes_orphelines();
-  $lots = lots_ouverts();
+  $lots = lots_rattachables();
   // Regroupées par produit et par date : on rattache un paquet d'un coup,
   // pas une barquette à la fois.
   $groupes = [];
@@ -441,6 +473,13 @@ require __DIR__ . '/includes/header.php';
       <?php foreach ($g['etiq'] as $e): ?>
       <input type="hidden" name="etiquette_id[]" value="<?= (int)$e['id'] ?>">
       <?php endforeach ?>
+      <?php
+        // Le numéro du fichier désigne-t-il déjà autre chose dans le
+        // registre ? C'est le signe que l'application et la balance ont
+        // numéroté chacune de leur côté : il faut le voir maintenant.
+        $conflit = $g['num'] ? conflit_numero($g['num'], (string)$g['produit']) : null;
+        $creable = $g['num'] && $g['produit'] && !$conflit;
+      ?>
       <div class="mb-3">
         <span class="lot-badge text-sm font-bold"><?= h($g['num'] ?: 'sans numéro') ?></span>
         <span class="block text-sm font-semibold"><?= h($g['produit'] ?: '(produit inconnu)') ?></span>
@@ -450,21 +489,54 @@ require __DIR__ . '/includes/header.php';
           · <?= fmt_qte(array_sum(array_map(fn($e) => (float)$e['poids_kg'], $g['etiq']))) ?>
         </span>
       </div>
+
+      <?php if ($conflit): ?>
+      <div class="bg-error-container text-on-error-container rounded-lg p-3 text-sm mb-3">
+        <strong class="block mb-1">Même numéro, produit différent</strong>
+        <?= h($g['num']) ?> désigne déjà « <?= h($conflit['produit']) ?> »
+        du <?= fmt_date($conflit['date_fabrication']) ?> dans le registre.
+        L'application et la balance ont numéroté chacune de leur côté.
+        Rattachez ces étiquettes au bon lot ci-dessous, ou corrigez le fichier avant de réimporter.
+      </div>
+      <?php endif ?>
+
+      <?php if ($creable): ?>
+      <div class="bg-surface-container-low rounded-lg p-3 mb-3">
+        <p class="text-xs text-on-surface-variant mb-2">
+          Ce numéro n'existe pas encore dans le registre : le lot a été créé directement à la
+          balance. On peut le créer ici <strong>avec ce numéro</strong> — les barquettes
+          portent déjà <?= h($g['num']) ?>, c'est lui qui fait foi.
+        </p>
+        <input type="hidden" name="num_lot" value="<?= h($g['num']) ?>">
+        <input type="hidden" name="produit" value="<?= h((string)$g['produit']) ?>">
+        <input type="hidden" name="date_etiquette" value="<?= h((string)$g['date']) ?>">
+        <button name="creer_lot" value="1" class="bg-primary text-on-primary rounded-full px-5 py-2.5 font-bold text-sm w-full">
+          Créer le lot <?= h($g['num']) ?>
+        </button>
+        <p class="text-xs text-on-surface-variant mt-2">
+          Il restera à indiquer ses matières premières dans l'Atelier : le fichier de la
+          balance ne les connaît pas, et un lot sans entrée ne peut pas être clôturé.
+        </p>
+      </div>
+      <?php endif ?>
+
       <?php if ($lots): ?>
       <div class="flex gap-2">
-        <select name="sortie_id" required class="flex-1 rounded-xl border-outline-variant">
-          <option value="">— rattacher au lot… —</option>
+        <select name="sortie_id" class="flex-1 rounded-xl border-outline-variant">
+          <option value="">— ou rattacher à un lot existant… —</option>
           <?php foreach ($lots as $l): ?>
-          <option value="<?= (int)$l['id'] ?>"><?= h($l['num_lot']) ?> — <?= h($l['produit']) ?></option>
+          <option value="<?= (int)$l['id'] ?>">
+            <?= h($l['num_lot']) ?> — <?= h($l['produit']) ?><?= lot_ouvert($l) ? '' : ' (clôturé)' ?>
+          </option>
           <?php endforeach ?>
         </select>
-        <button name="rattacher" value="1" class="bg-primary text-on-primary rounded-full px-5 font-bold text-sm shrink-0">
+        <button name="rattacher" value="1" class="bg-surface-container text-on-surface rounded-full px-5 font-bold text-sm shrink-0">
           Rattacher
         </button>
       </div>
-      <?php else: ?>
+      <?php elseif (!$creable): ?>
       <p class="text-sm text-error">
-        Aucun lot ouvert. <a href="atelier.php" class="underline font-semibold">Ouvrez le lot correspondant</a>,
+        Aucun lot auquel rattacher. <a href="atelier.php" class="underline font-semibold">Ouvrez le lot correspondant</a>,
         puis revenez ici.
       </p>
       <?php endif ?>

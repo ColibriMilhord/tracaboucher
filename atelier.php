@@ -83,11 +83,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['cloturer'])) {
 
     if ($qte === null || $qte <= 0) {
         $err = 'Indiquez la quantité produite.';
+    } elseif (!lot_complet($id)) {
+        // Un lot sans matière première est un trou dans la chaîne : on
+        // sait ce qui est sorti, pas ce qui est entré. C'est le cas d'un
+        // lot créé depuis une étiquette de la balance.
+        $err = "Ce lot n'a pas de matière première : indiquez-la avant de clôturer.";
     } elseif (!cloturer_lot($id, $qte, $unite, $dlc ?: null, $moi)) {
         // rowCount à zéro : quelqu'un d'autre est passé avant.
         $err = "Ce lot vient d'être clôturé par quelqu'un d'autre. Rien n'a été modifié.";
     } else {
         $_SESSION['atelier_msg'] = 'cloture';
+        header('Location: atelier.php'); exit;
+    }
+}
+
+// ── Compléter les matières premières d'un lot né d'une étiquette
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['completer'])) {
+    $id = (int)$_POST['lot_id'];
+    $choisis = array_values(array_filter(array_map('intval', (array)($_POST['entree_id'] ?? []))));
+    if (!$choisis) {
+        $err = 'Cochez au moins une matière première.';
+    } else {
+        $pdo->prepare('DELETE FROM lots_sortie_entrees WHERE sortie_id = ?')->execute([$id]);
+        $ins = $pdo->prepare('INSERT INTO lots_sortie_entrees (sortie_id, entree_id, quantite_kg) VALUES (?,?,NULL)');
+        foreach ($choisis as $eid) { $ins->execute([$id, $eid]); }
+        $_SESSION['atelier_msg'] = 'complete';
         header('Location: atelier.php'); exit;
     }
 }
@@ -129,6 +149,12 @@ require __DIR__ . '/includes/header.php';
 
 <?php if ($err): ?>
 <div class="bg-error-container text-on-error-container rounded-xl p-4 mb-4 text-sm"><?= h($err) ?></div>
+<?php endif ?>
+
+<?php if ($msg === 'complete'): ?>
+<div class="bg-primary-container text-on-primary-container rounded-xl p-4 mb-4 text-sm">
+  Matières premières enregistrées. Le lot peut maintenant être clôturé.
+</div>
 <?php endif ?>
 
 <?php if ($msg === 'cloture'): ?>
@@ -257,6 +283,41 @@ if ($ouvert_a_afficher):
         </a>
       </div>
 
+      <?php if (!$l['sources']): ?>
+      <!-- Lot né d'une étiquette : la balance ne sait rien des entrées -->
+      <div class="bg-error-container text-on-error-container rounded-lg p-3 mb-3">
+        <div class="font-bold text-sm mb-1 flex items-center gap-2">
+          <span class="material-symbols-outlined text-base">warning</span>Matière première manquante
+        </div>
+        <p class="text-xs mb-2">
+          Ce lot a été créé depuis une étiquette de la balance : le fichier ne dit pas ce qui
+          est entré dedans. Tant que ce n'est pas renseigné, il ne peut pas être clôturé.
+        </p>
+        <details>
+          <summary class="cursor-pointer select-none text-sm font-semibold">Indiquer la matière première</summary>
+          <form method="post" class="mt-2">
+            <input type="hidden" name="lot_id" value="<?= (int)$l['id'] ?>">
+            <div class="bg-surface text-on-surface border border-outline-variant rounded-lg divide-y divide-outline-variant max-h-48 overflow-y-auto mb-2">
+              <?php foreach ($entrees as $e): ?>
+              <label class="flex items-center gap-3 px-3 py-2 cursor-pointer">
+                <input type="checkbox" name="entree_id[]" value="<?= (int)$e['id'] ?>" class="rounded border-outline-variant text-primary">
+                <span class="flex-1 min-w-0 text-sm">
+                  <span class="lot-badge font-bold"><?= h($e['num_lot']) ?></span>
+                  <span class="block text-xs text-on-surface-variant truncate">
+                    <?= h($e['type_libelle']) ?> · <?= h($e['fournisseur']) ?>
+                  </span>
+                </span>
+              </label>
+              <?php endforeach ?>
+            </div>
+            <button name="completer" value="1" class="w-full bg-surface text-on-surface rounded-full py-2.5 font-bold text-sm">
+              Enregistrer
+            </button>
+          </form>
+        </details>
+      </div>
+      <?php endif ?>
+
       <!-- ÉTAPE 3, repliée sous chaque lot : on clôture là où on est -->
       <details class="border-t border-outline-variant pt-3">
         <summary class="cursor-pointer select-none text-sm font-semibold flex items-center gap-2 text-on-surface-variant">
@@ -286,7 +347,9 @@ if ($ouvert_a_afficher):
             <input type="date" name="dlc" value="<?= h($l['dlc'] ?? '') ?>" class="w-full rounded-xl border-outline-variant">
           </div>
           <div class="flex items-end">
-            <button name="cloturer" value="1" class="w-full bg-primary text-on-primary rounded-full py-3 font-bold text-sm">
+            <button name="cloturer" value="1" <?= $l['sources'] ? '' : 'disabled' ?>
+                    class="w-full bg-primary text-on-primary rounded-full py-3 font-bold text-sm <?= $l['sources'] ? '' : 'opacity-40' ?>"
+                    <?= $l['sources'] ? '' : 'title="Indiquez d\'abord la matière première"' ?>>
               Clôturer
             </button>
           </div>

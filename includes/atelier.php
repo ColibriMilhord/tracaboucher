@@ -335,11 +335,105 @@ function etiquettes_interpreter(array $entete, array $cellules, array $cols, str
 }
 
 /**
+ * Lots auxquels une étiquette peut se rattacher.
+ *
+ * Pas seulement les lots ouverts : un fichier peut arriver après la
+ * clôture — c'est même le cas normal quand la saisie est différée de
+ * plusieurs jours. On remonte donc aussi les lots récemment clôturés.
+ */
+function lots_rattachables(int $jours = 60): array {
+    if (!atelier_installe()) return [];
+    $q = db()->prepare(
+        "SELECT * FROM lots_sortie
+          WHERE statut = 'ouvert' OR date_fabrication >= ?
+          ORDER BY date_fabrication DESC, id DESC"
+    );
+    $q->execute([date('Y-m-d', strtotime('-' . $jours . ' days'))]);
+    return $q->fetchAll();
+}
+
+function lot_par_numero(string $num): ?array {
+    if (!atelier_installe() || trim($num) === '') return null;
+    $q = db()->prepare('SELECT * FROM lots_sortie WHERE num_lot = ? LIMIT 1');
+    $q->execute([trim($num)]);
+    return $q->fetch() ?: null;
+}
+
+/**
+ * Un lot sans matière première est un trou dans la chaîne : on sait ce
+ * qui est sorti, pas ce qui est entré dedans. C'est le cas d'un lot créé
+ * depuis une étiquette, où le fichier de la balance ne dit rien des
+ * lots d'entrée. On le signale, et on interdit de clôturer ainsi.
+ */
+function lot_complet(int $id): bool {
+    $q = db()->prepare('SELECT COUNT(*) FROM lots_sortie_entrees WHERE sortie_id = ?');
+    $q->execute([$id]);
+    return (int)$q->fetchColumn() > 0;
+}
+
+/**
+ * Crée le lot qu'une étiquette désigne, AVEC LE NUMÉRO DU FICHIER.
+ *
+ * Le cas : l'artisan a créé le lot directement à la balance, par
+ * anticipation, sans passer par l'application. Les barquettes portent
+ * déjà « 031026-2 ». Générer un nouveau numéro ici ferait mentir les
+ * étiquettes déjà posées — c'est le numéro imprimé qui fait foi, et le
+ * registre doit s'y conformer.
+ *
+ * Le lot naît sans matière première : le fichier de la balance n'en sait
+ * rien. Il est donc ouvert et signalé incomplet jusqu'à ce que
+ * quelqu'un coche les lots d'entrée dans l'Atelier.
+ *
+ * @return array{id: int, num_lot: string}
+ * @throws RuntimeException si le numéro est déjà pris par un autre lot
+ */
+function creer_lot_depuis_etiquette(string $num_lot, string $produit, ?string $date,
+                                    array $moi, ?int $produit_id = null): array {
+    $num = trim($num_lot);
+    if ($num === '')     { throw new RuntimeException("L'étiquette ne porte pas de numéro de lot."); }
+    if ($produit === '') { throw new RuntimeException("L'étiquette ne porte pas de produit."); }
+
+    $existant = lot_par_numero($num);
+    if ($existant) {
+        throw new RuntimeException(
+            'Le numéro ' . $num . ' est déjà celui de « ' . $existant['produit'] . ' » '
+            . '(' . fmt_date($existant['date_fabrication']) . '). Deux lots ne peuvent pas '
+            . 'porter le même numéro : rattachez les étiquettes à ce lot, ou corrigez le fichier.'
+        );
+    }
+
+    $pdo = db();
+    $pdo->prepare(
+        'INSERT INTO lots_sortie
+         (num_lot, date_fabrication, produit, produit_id, quantite, unite,
+          conditionnement, conservation, cree_par, statut, ouvert_le, ouvert_par)
+         VALUES (?,?,?,?,0,?,?,?,?,?,NOW(),?)'
+    )->execute([
+        $num, $date ?: date('Y-m-d'), $produit, $produit_id,
+        'kg', 'barquette', 'froid_positif',
+        $moi['nom'] ?? '', LOT_OUVERT, $moi['nom'] ?? '',
+    ]);
+    return ['id' => (int)$pdo->lastInsertId(), 'num_lot' => $num];
+}
+
+/**
+ * Le numéro porté par une étiquette désigne-t-il déjà un AUTRE produit
+ * dans le registre ? C'est le signe que l'application et la balance ont
+ * attribué le même numéro chacune de son côté — il faut le voir tout de
+ * suite, pas le découvrir au contrôle.
+ */
+function conflit_numero(string $num, string $produit): ?array {
+    $lot = lot_par_numero($num);
+    if (!$lot) return null;
+    return mb_strtolower(trim($lot['produit'])) === mb_strtolower(trim($produit)) ? null : $lot;
+}
+
+/**
  * Rattache une étiquette au lot qu'elle désigne.
  *
  * Le numéro de lot du fichier est le signal décisif. À défaut, on
- * cherche un lot ouvert du même produit à la même date : c'est le cas
- * du boucher qui a étiqueté à la balance sans y ressaisir le numéro.
+ * cherche un lot du même produit à la même date : c'est le cas du
+ * boucher qui a étiqueté à la balance sans y ressaisir le numéro.
  */
 function lot_pour_etiquette(array $etiq, array $lots): ?array {
     $num = mb_strtolower(trim((string)$etiq['num_lot']));

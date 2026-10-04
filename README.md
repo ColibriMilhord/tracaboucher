@@ -128,15 +128,45 @@ L'autre parcours : on étiquette d'abord à la balance, on saisit ensuite.
 4. **Rattacher** — les étiquettes rejoignent leur lot ; celles qui ne
    correspondent à rien restent visibles et se rattachent à la main.
 
-**Le numéro de lot naît dans TraçaBoucher, jamais à la balance.**
-L'import ne crée pas de lot : il le complète. Le poids pesé est ensuite
-proposé comme quantité produite à la clôture — plus rien à retaper.
-
 Le rattachement se fait sur le numéro de lot lu dans le fichier ; à
-défaut, sur le couple produit + date. **Deux lots du même produit ouverts
-le même jour ne sont jamais départagés automatiquement** : c'est
+défaut, sur le couple produit + date, parmi les lots ouverts **et ceux
+clôturés depuis moins de 60 jours** — un fichier arrive souvent après la
+clôture, c'est tout l'intérêt de la saisie différée. **Deux lots du même
+produit le même jour ne sont jamais départagés automatiquement** : c'est
 précisément ce que l'occurrence sert à distinguer, et ce n'est pas à
 l'application d'en décider.
+
+### Quand le lot a été créé à la balance
+
+Le cas réel : l'artisan ouvre `031026-2` directement dans la balance,
+par anticipation, sans passer par l'application. Les barquettes portent
+déjà ce numéro. On ne peut alors pas s'en tenir à « le numéro naît dans
+TraçaBoucher » — le numéro imprimé fait foi, et le registre doit s'y
+conformer.
+
+L'écran de rattachement propose donc **« Créer le lot 031026-2 »**, qui
+crée la fabrication **avec le numéro du fichier**, jamais avec un numéro
+généré. Trois garde-fous :
+
+- **Jamais deux lots au même numéro.** Si `031026-2` désigne déjà autre
+  chose, la création est refusée en nommant le lot existant.
+- **Conflit signalé.** Si le numéro du fichier désigne déjà un *autre
+  produit*, un bandeau rouge le dit : l'application et la balance ont
+  numéroté chacune de leur côté. Mieux vaut le voir à l'import qu'au
+  contrôle.
+- **Pas de clôture sans matière première.** Le fichier de la balance ne
+  dit rien de ce qui est entré dans le lot. Un lot né d'une étiquette est
+  donc marqué incomplet, et la clôture lui est refusée tant que les lots
+  d'entrée ne sont pas cochés — un registre qui dit ce qui est sorti sans
+  dire ce qui est entré ne sert à rien. L'Atelier permet de les indiquer
+  en deux clics, directement sur la carte du lot.
+
+Une fois le lot créé, la numérotation de l'application le voit et saute
+au suivant : `generer_num_sortie()` prend le maximum existant du jour,
+donc plus aucun risque de réémettre `031026-2`.
+
+Le poids pesé est ensuite proposé comme quantité produite à la clôture —
+plus rien à retaper.
 
 Moteur de lecture : `includes/csv.php`, portage de celui éprouvé sur les
 relevés bancaires d'app.causselot.fr, généralisé aux rôles de colonnes.
