@@ -191,6 +191,26 @@ Les onglets sont nommés par **ce qu'on vient y faire** :
 Chaque onglet porte une **pastille** quand il lui manque quelque chose
 d'obligatoire — un agrément vide se voit sans avoir à ouvrir l'onglet.
 
+Sur téléphone, les cinq onglets ne tiennent pas à l'écran. Deux choses
+s'en occupent : **des flèches ‹ ›** apparaissent du côté où il reste des
+onglets, et **l'onglet ouvert est ramené dans le champ de vision** à
+l'arrivée — sans quoi on lit le contenu d'un onglet dont on ne voit pas
+le nom, ce qui est pire que pas d'onglets du tout. Sans JavaScript, la
+barre reste défilable au doigt.
+
+*Note pour qui y touchera :* les flèches sont pilotées par `style.display`
+et non par l'attribut `hidden`. `hidden` pose `display:none`, mais la
+classe Tailwind `flex` pose `display:flex` et l'emporte — les flèches
+seraient restées visibles en permanence.
+
+**Toute page ouverte depuis les Paramètres sait y ramener.** `maj.php`,
+`materiel.php` et `migrer_comptes.php` portent un retour vers l'onglet
+d'où ils viennent ; `exports.php` et `produits.php`, qui s'atteignent
+aussi par la navigation, ne l'affichent que si l'on arrive avec
+`?de=parametres`. Le helper est `fil_retour()` dans `includes/db.php`.
+Sur téléphone il n'y a pas de barre latérale pour se raccrocher, et le
+bouton « précédent » du navigateur n'est pas une réponse d'interface.
+
 Le jeton de la balance a quitté les Paramètres : il vit dans **Matériel**
 avec l'agent auquel il sert, et c'est là que le guide et les exports y
 renvoient désormais.

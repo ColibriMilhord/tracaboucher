@@ -79,6 +79,7 @@ foreach ($etat as $e) { if (!$e['existe'] || $e['manquants']) $tout_ok = false; 
 require __DIR__ . '/includes/header.php';
 ?>
 
+<?= fil_retour('parametres.php?onglet=systeme', 'Paramètres · Système') ?>
 <h2 class="font-headline-lg text-2xl font-bold text-primary mb-1">Mise à jour de la base</h2>
 <p class="text-xs text-on-surface-variant mb-2">
   Version déployée sur ce serveur : <strong><?= h(version_affichee()) ?></strong>

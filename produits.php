@@ -94,6 +94,9 @@ $plu_propose = $edit['plu'] ?? prochain_plu();
 require __DIR__ . '/includes/header.php';
 ?>
 
+<?php if (($_GET['de'] ?? '') === 'parametres'): ?>
+<?= fil_retour('parametres.php?onglet=systeme', 'Paramètres · Système') ?>
+<?php endif ?>
 <div class="flex items-start justify-between gap-3 mb-1">
   <h2 class="font-headline-lg text-2xl font-bold text-primary">Produits</h2>
   <?php if ($produits): ?>

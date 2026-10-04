@@ -116,20 +116,70 @@ require __DIR__ . '/includes/header.php';
 <h2 class="font-headline-lg text-2xl font-bold text-primary mb-1">Paramètres</h2>
 <p class="text-sm text-on-surface-variant mb-4">Réglé une fois, puis oublié. Seules les matières premières bougent de temps en temps.</p>
 
-<!-- Onglets : défilables sur téléphone, sans JavaScript -->
-<nav class="flex gap-2 overflow-x-auto pb-2 mb-5 -mx-4 px-4">
-  <?php foreach (ONGLETS_PARAM as $cle => [$lib, $icone]): $actif = $onglet === $cle; ?>
-  <a href="parametres.php?onglet=<?= h($cle) ?>"
-     class="<?= $actif ? 'bg-primary text-on-primary' : 'bg-surface text-on-surface-variant border border-outline-variant' ?>
-            rounded-full px-4 py-2.5 text-sm font-bold whitespace-nowrap flex items-center gap-2 shrink-0">
-    <span class="material-symbols-outlined text-base"><?= $icone ?></span><?= h($lib) ?>
-    <?php if ($alertes[$cle]): ?>
-    <span class="<?= $actif ? 'bg-on-primary text-primary' : 'bg-error text-on-error' ?>
-                 rounded-full w-5 h-5 flex items-center justify-center text-xs font-extrabold"><?= (int)$alertes[$cle] ?></span>
-    <?php endif ?>
-  </a>
-  <?php endforeach ?>
-</nav>
+<!-- Onglets. Sur téléphone ils ne tiennent pas tous à l'écran : des
+     flèches disent de quel côté il en reste, et l'onglet actif est
+     ramené dans le champ de vision à l'arrivée. Sans JavaScript, la
+     barre reste simplement défilable au doigt. -->
+<div class="relative mb-5">
+  <button type="button" id="onglets-g" aria-label="Onglets précédents" style="display:none"
+          class="absolute left-0 top-0 bottom-2 z-10 w-9 items-center justify-start
+                 bg-gradient-to-r from-background via-background to-transparent">
+    <span class="material-symbols-outlined bg-surface border border-outline-variant rounded-full p-1 shadow-sm">chevron_left</span>
+  </button>
+
+  <nav id="onglets" class="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4 scroll-smooth"
+       style="scrollbar-width:none;-ms-overflow-style:none">
+    <?php foreach (ONGLETS_PARAM as $cle => [$lib, $icone]): $actif = $onglet === $cle; ?>
+    <a href="parametres.php?onglet=<?= h($cle) ?>" <?= $actif ? 'aria-current="page"' : '' ?>
+       class="<?= $actif ? 'bg-primary text-on-primary' : 'bg-surface text-on-surface-variant border border-outline-variant' ?>
+              rounded-full px-4 py-2.5 text-sm font-bold whitespace-nowrap flex items-center gap-2 shrink-0">
+      <span class="material-symbols-outlined text-base"><?= $icone ?></span><?= h($lib) ?>
+      <?php if ($alertes[$cle]): ?>
+      <span class="<?= $actif ? 'bg-on-primary text-primary' : 'bg-error text-on-error' ?>
+                   rounded-full w-5 h-5 flex items-center justify-center text-xs font-extrabold"><?= (int)$alertes[$cle] ?></span>
+      <?php endif ?>
+    </a>
+    <?php endforeach ?>
+  </nav>
+
+  <button type="button" id="onglets-d" aria-label="Onglets suivants" style="display:none"
+          class="absolute right-0 top-0 bottom-2 z-10 w-9 items-center justify-end
+                 bg-gradient-to-l from-background via-background to-transparent">
+    <span class="material-symbols-outlined bg-surface border border-outline-variant rounded-full p-1 shadow-sm">chevron_right</span>
+  </button>
+</div>
+
+<script>
+(function () {
+  var barre = document.getElementById('onglets'),
+      gauche = document.getElementById('onglets-g'),
+      droite = document.getElementById('onglets-d');
+  if (!barre) return;
+
+  barre.style.setProperty('scrollbar-width', 'none');
+
+  function majFleches() {
+    var deborde = barre.scrollWidth > barre.clientWidth + 4;
+    var reste_a_gauche = deborde && barre.scrollLeft > 4;
+    var reste_a_droite = deborde && barre.scrollLeft + barre.clientWidth < barre.scrollWidth - 4;
+    gauche.style.display = reste_a_gauche ? 'flex' : 'none';
+    droite.style.display = reste_a_droite ? 'flex' : 'none';
+  }
+
+  // L'onglet ouvert doit être visible : sinon on lit le contenu d'un
+  // onglet dont on ne voit pas le nom, ce qui est pire que pas d'onglets.
+  var actif = barre.querySelector('[aria-current="page"]');
+  if (actif && actif.scrollIntoView) {
+    actif.scrollIntoView({ inline: 'center', block: 'nearest' });
+  }
+
+  barre.addEventListener('scroll', majFleches, { passive: true });
+  window.addEventListener('resize', majFleches);
+  gauche.addEventListener('click', function () { barre.scrollBy({ left: -170, behavior: 'smooth' }); });
+  droite.addEventListener('click', function () { barre.scrollBy({ left: 170, behavior: 'smooth' }); });
+  majFleches();
+})();
+</script>
 
 <?php if ($msg): ?><div class="bg-error-container text-on-error-container rounded-xl px-4 py-3 mb-4 text-sm"><?= h($msg) ?></div><?php endif ?>
 <?php if ($ok):  ?><div class="bg-primary-container text-on-primary-container rounded-xl px-4 py-3 mb-4 text-sm"><?= h($ok) ?></div><?php endif ?>
@@ -389,9 +439,9 @@ require __DIR__ . '/includes/header.php';
      'À lancer après chaque nouvelle version livrée.'],
     ['materiel.php', 'devices', 'Matériel',
      "Le PC de l'atelier, l'agent de la balance et son jeton."],
-    ['exports.php', 'download', 'Exports',
+    ['exports.php?de=parametres', 'download', 'Exports',
      'Registres réglementaires et fichiers pour la balance.'],
-    ['produits.php', 'inventory', 'Produits',
+    ['produits.php?de=parametres', 'inventory', 'Produits',
      'Le catalogue envoyé à la balance : PLU, EAN, prix, DLC.'],
   ];
   if (defined('DIAGNOSTIC_CLE') && DIAGNOSTIC_CLE !== '') {

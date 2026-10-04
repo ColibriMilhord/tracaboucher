@@ -47,6 +47,7 @@ $agent_vu   = is_array($statut) && !empty($statut['le']);
 require __DIR__ . '/includes/header.php';
 ?>
 
+<?= fil_retour('parametres.php?onglet=systeme', 'Paramètres · Système') ?>
 <h2 class="font-headline-lg text-2xl font-bold text-primary mb-1">Matériel</h2>
 <p class="text-sm text-on-surface-variant mb-5">Le PC de l'atelier, celui où est installé DFS.</p>
 

@@ -101,6 +101,19 @@ function reglage(string $cle, string $defaut=''): string {
     return $cache[$cle] ?? $defaut;
 }
 
+/**
+ * Lien de retour en tête de page.
+ *
+ * Une page atteinte depuis un menu doit dire comment y revenir : sur
+ * téléphone, il n'y a pas de barre latérale pour s'y raccrocher, et le
+ * bouton « précédent » du navigateur n'est pas une réponse d'interface.
+ */
+function fil_retour(string $url, string $libelle): string {
+    return '<a href="' . h($url) . '" class="inline-flex items-center gap-1 text-sm text-primary '
+         . 'font-semibold mb-3 -ml-1"><span class="material-symbols-outlined text-lg">chevron_left</span>'
+         . h($libelle) . '</a>';
+}
+
 // ============================================================
 //  Numérotation des lots
 // ============================================================

@@ -61,6 +61,9 @@ $sections = [
 require __DIR__ . '/includes/header.php';
 ?>
 
+<?php if (($_GET['de'] ?? '') === 'parametres'): ?>
+<?= fil_retour('parametres.php?onglet=systeme', 'Paramètres · Système') ?>
+<?php endif ?>
 <h2 class="font-headline-lg text-2xl font-bold text-primary mb-1">Exports</h2>
 <p class="text-sm text-on-surface-variant mb-6">
   Le téléchargement démarre au clic. Les fiches de traçabilité d'un lot précis

@@ -90,6 +90,7 @@ $a_reprendre = array_filter($comptes, fn($u) => !$u['deja_present']);
 require __DIR__ . '/includes/header.php';
 ?>
 
+<?= fil_retour('parametres.php?onglet=comptes', 'Paramètres · Comptes') ?>
 <h2 class="font-headline-lg text-2xl font-bold text-primary mb-1">Reprise des comptes</h2>
 <p class="text-sm text-on-surface-variant mb-6">
   Recopie dans la base partagée CAUSSELOT les comptes qui n'existaient que dans TraçaBoucher,
