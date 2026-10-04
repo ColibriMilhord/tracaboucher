@@ -171,6 +171,37 @@ plus rien à retaper.
 Moteur de lecture : `includes/csv.php`, portage de celui éprouvé sur les
 relevés bancaires d'app.causselot.fr, généralisé aux rôles de colonnes.
 
+## Paramètres : cinq onglets, pas un inventaire
+
+Tout était empilé sur une page : le nom de l'atelier, les mentions
+d'origine, les types de matière, les comptes et le jeton de la balance.
+Un artisan qui cherchait son numéro d'agrément traversait des réglages
+de connexion unique pour le trouver.
+
+Les onglets sont nommés par **ce qu'on vient y faire** :
+
+| Onglet | Ce qu'on y règle |
+|---|---|
+| **Mon atelier** | Nom, préfixe des numéros de lot — avec l'aperçu du numéro obtenu |
+| **Étiquettes** | Origines, agréments, mention bio — avec l'aperçu de ce que lira le client |
+| **Matières premières** | Les types reçus, leur code et leur couleur |
+| **Comptes** | État de la connexion unique, lien vers le portail, reprise des anciens comptes |
+| **Système** | Mise à jour de la base, Matériel, Exports, Produits, version déployée |
+
+Chaque onglet porte une **pastille** quand il lui manque quelque chose
+d'obligatoire — un agrément vide se voit sans avoir à ouvrir l'onglet.
+
+Le jeton de la balance a quitté les Paramètres : il vit dans **Matériel**
+avec l'agent auquel il sert, et c'est là que le guide et les exports y
+renvoient désormais.
+
+**Le piège du découpage**, pour qui touchera à cette page : le
+gestionnaire d'enregistrement n'écrit **que les clés présentes dans le
+POST**. Avant les onglets, le formulaire portait tous les réglages à la
+fois et `nom_atelier` comme `prefixe_sortie` étaient écrits sans
+condition ; tels quels, enregistrer depuis l'onglet Étiquettes les aurait
+vidés.
+
 ## Matériel : le PC de l'atelier
 
 **`materiel.php`** remplace le README qu'il fallait aller chercher dans

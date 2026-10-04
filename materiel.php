@@ -22,6 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pdo->prepare('INSERT INTO reglages (cle, valeur) VALUES (?,?) ON DUPLICATE KEY UPDATE valeur=VALUES(valeur)')
             ->execute(['token_export', bin2hex(random_bytes(24))]);
         $msg = 'Jeton généré. Recopiez l\'URL ci-dessous dans l\'agent.';
+    } elseif (isset($_POST['revoke_token'])) {
+        $pdo->prepare("UPDATE reglages SET valeur='' WHERE cle='token_export'")->execute();
+        $msg = "Jeton révoqué : l'agent ne peut plus rien récupérer.";
     } elseif (isset($_POST['declare_installe'])) {
         definir_reglage_utilisateur((int)$moi['id'], 'agent_installe', 'oui');
         $msg = "C'est noté : l'installation ne vous sera plus proposée.";
@@ -115,6 +118,9 @@ $etapes = [
       </button>
       <form method="post" onsubmit="return confirm('Générer un nouveau jeton ? L\'ancien cessera de fonctionner.')">
         <button name="gen_token" value="1" class="bg-surface-container text-on-surface rounded-full px-5 py-2 font-bold text-sm">Régénérer</button>
+      </form>
+      <form method="post" onsubmit="return confirm('Révoquer le jeton ? L\'agent ne pourra plus rien récupérer.')">
+        <button name="revoke_token" value="1" class="text-error rounded-full px-5 py-2 font-bold text-sm">Révoquer</button>
       </form>
     </div>
     <?php endif ?>

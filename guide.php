@@ -26,19 +26,19 @@ $etapes = [
     [
         'ok'    => reglage('nom_atelier') !== '',
         'titre' => 'Nom de l\'atelier renseigné',
-        'lien'  => 'parametres.php', 'action' => 'Paramètres',
+        'lien'  => 'parametres.php?onglet=atelier', 'action' => 'Mon atelier',
     ],
     [
         'ok'    => reglage('agrement_atelier') !== '' && reglage('agrement_abattoir') !== '',
         'titre' => 'Numéros d\'agrément (abattoir + atelier de découpe)',
         'aide'  => 'Obligatoires sur les étiquettes de viande bovine.',
-        'lien'  => 'parametres.php', 'action' => 'Paramètres',
+        'lien'  => 'parametres.php?onglet=etiquettes', 'action' => 'Étiquettes',
     ],
     [
         'ok'    => reglage('code_certificateur') !== '',
         'titre' => 'Code de l\'organisme certificateur bio',
         'aide'  => 'Ex. FR-BIO-01. Nécessaire pour l\'Eurofeuille.',
-        'lien'  => 'parametres.php', 'action' => 'Paramètres',
+        'lien'  => 'parametres.php?onglet=etiquettes', 'action' => 'Étiquettes',
     ],
     [
         'ok'    => $nb_produits > 0,

@@ -34,7 +34,7 @@ require __DIR__ . '/includes/header.php';
     Tant que ce point n'est pas réglé, les comptes modifiés sur le portail
     ne changeront rien ici : ce sont les comptes locaux qui servent.
   </div>
-  <a href="parametres.php" class="bg-primary text-on-primary rounded-full px-5 py-2.5 font-bold text-sm inline-block">
+  <a href="parametres.php?onglet=comptes" class="bg-primary text-on-primary rounded-full px-5 py-2.5 font-bold text-sm inline-block">
     Voir l'état dans les paramètres
   </a>
   <?php else: ?>

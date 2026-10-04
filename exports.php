@@ -94,10 +94,10 @@ require __DIR__ . '/includes/header.php';
   <h3 class="font-headline-md font-bold mb-1">Pont automatique</h3>
   <p class="text-xs text-on-surface-variant mb-3">
     Le PC de la balance récupère les fichiers Articulo tout seul, sans session, via un jeton.
-    Le réglage vit dans les paramètres.
+    Son installation et son jeton vivent dans Matériel.
   </p>
-  <a href="parametres.php" class="bg-surface-container text-on-surface rounded-full px-5 py-2.5 font-bold text-sm inline-flex items-center gap-2">
-    <span class="material-symbols-outlined text-base">settings</span>Paramètres
+  <a href="materiel.php" class="bg-surface-container text-on-surface rounded-full px-5 py-2.5 font-bold text-sm inline-flex items-center gap-2">
+    <span class="material-symbols-outlined text-base">devices</span>Matériel
   </a>
 </section>
 <?php endif ?>
