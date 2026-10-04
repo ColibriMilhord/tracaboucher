@@ -139,9 +139,13 @@ $entrees = $pdo->query(
 require __DIR__ . '/includes/header.php';
 ?>
 
-<div class="flex items-center justify-between mb-1">
+<div class="flex items-center justify-between gap-3 mb-1">
   <h2 class="font-headline-lg text-2xl font-bold text-primary">Atelier</h2>
-  <a href="import_etiquettes.php" class="text-sm text-primary underline">Importer des étiquettes</a>
+  <div class="flex items-center gap-3 shrink-0">
+    <a href="import_etiquettes.php" class="text-sm text-primary underline">Importer des étiquettes</a>
+    <a href="aide.php?c=atelier#atelier" title="Comment ça marche ?"
+       class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-1 rounded-full">help</a>
+  </div>
 </div>
 <p class="text-sm text-on-surface-variant mb-4">
   <?= count($lots) ?> lot(s) ouvert(s) · <?= h(date('d/m/Y')) ?>

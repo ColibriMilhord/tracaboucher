@@ -207,7 +207,11 @@ if ($etape === 0) { $etape = 2; }
 require __DIR__ . '/includes/header.php';
 ?>
 
-<h2 class="font-headline-lg text-2xl font-bold text-primary mb-1">Importer des étiquettes</h2>
+<div class="flex items-center justify-between gap-3 mb-1">
+  <h2 class="font-headline-lg text-2xl font-bold text-primary">Importer des étiquettes</h2>
+  <a href="aide.php?c=etiquettes#etiquettes" title="Comment ça marche ?"
+     class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-1 rounded-full shrink-0">help</a>
+</div>
 <p class="text-sm text-on-surface-variant mb-4">
   Les barquettes ont été pesées et étiquetées à la balance. On remonte le fichier.
 </p>

@@ -236,6 +236,42 @@ sur `agent_inventaire.php`. Uniquement des noms et des comptages, aucune
 donnée. C'est ce qui permettra de savoir où DFS range les pesées, et donc
 de remonter les étiquettes automatiquement — sans deviner un nom de table.
 
+## Aide : le guide dans le logiciel
+
+`aide.php` est le mode d'emploi complet, accessible par le **?** de l'en-tête depuis
+n'importe quel écran. Douze chapitres, chacun bâti de la même façon : à quoi ça sert,
+les étapes dans l'ordre, puis **les règles que le logiciel applique tout seul**.
+
+Le contenu vit dans `includes/aide_contenu.php`, séparé de sa mise en page :
+
+| Fonction | Contenu |
+|---|---|
+| `aide_chapitres()` | 12 chapitres → `titre`, `icone`, `resume`, `intro`, `etapes`, `regles`, `liens` |
+| `aide_memo()` | 4 blocs de règles transversales, pour relecture avant un contrôle |
+
+Les chapitres suivent le parcours réel de l'atelier : premiers pas, recevoir une matière
+première, fabriquer (ouvrir / étiqueter / clôturer), travailler à deux, **le lot créé à la
+balance et non dans le logiciel**, les étiquettes, retrouver une origine, les registres,
+les produits et la balance, la mention bio, les réglages, les comptes.
+
+Trois usages, et c'est pour cela que la page est faite ainsi :
+
+- **chercher un sujet** → le sommaire en haut, une carte par chapitre ;
+- **apprendre** → les chapitres se déplient dans l'ordre (`Tout déplier`) ;
+- **vérifier une règle** → le mémo en bas, ou l'impression.
+
+Deux détails qui comptent à l'usage :
+
+- un lien peut viser un chapitre : `aide.php?c=etiquettes#etiquettes`. Les écrans **Atelier**
+  et **Importer des étiquettes** portent une icône `?` qui ouvre directement le bon chapitre ;
+- à l'**impression**, tous les chapitres sont dépliés et le sommaire, les boutons et les liens
+  disparaissent : un manuel papier avec des chapitres fermés ne servirait à rien.
+
+Règle de maintenance : **l'aide est écrite depuis le code, pas de mémoire.** Chaque règle
+énoncée correspond à un comportement programmé. Une modification de comportement se
+reporte dans `aide_contenu.php` dans le même commit — une documentation qui vit ailleurs
+finit par mentir.
+
 ## Numérotation des lots
 
 | | Format | Exemple |
@@ -260,6 +296,8 @@ matière première**. La catégorie « Viande » déclenche l'alerte de tempéra
 | `fabrications.php` | Suivi des fabrications, avec lots d'entrée utilisés |
 | `tracabilite.php` | Recherche ascendante et descendante |
 | `etiquette.php` | Vue imprimable d'un n° de lot |
+| `aide.php` | Guide complet : 12 chapitres, les étapes et les règles |
+| `guide.php` | Assistant balance : préparer et importer le fichier dans DFS |
 | `exports.php` | Écran des exports — registres et fichiers balance |
 | `export.php` | Génération des CSV (fiche de lot, registres, DFS) |
 | `parametres.php` | Types de matière, préfixe, agréments, jeton — **admin** |

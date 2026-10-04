@@ -55,6 +55,7 @@ require __DIR__ . '/includes/header.php';
 <h2 class="font-headline-lg text-2xl font-bold text-primary mb-1">Assistant balance</h2>
 <p class="text-sm text-on-surface-variant mb-6">
   Comment envoyer vos produits vers l'étiqueteuse Dibal, étape par étape.
+  Pour le reste du logiciel, voir l'<a class="text-primary underline" href="aide.php">aide complète</a>.
 </p>
 
 <?php

@@ -82,7 +82,7 @@
     <span class="material-symbols-outlined">inventory_2</span><?= h(APP_NAME) ?>
   </a>
   <div class="flex items-center gap-1">
-    <a href="guide.php" title="Assistant balance" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">help</a>
+    <a href="aide.php" title="Aide — le guide complet" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">help</a>
     <a href="exports.php" title="Exports" class="hidden md:inline-block material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">download</a>
     <?php if (est_admin($moi)): ?>
     <a href="produits.php" title="Produits" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container-high p-2 rounded-full">inventory</a>
@@ -105,7 +105,8 @@
         ['fabrications', 'fabrications.php', 'outbox',          'Fabrications'],
         ['tracabilite',  'tracabilite.php',  'account_tree',    'Traçabilité'],
         ['exports',      'exports.php',      'download',        'Exports'],
-        ['guide',        'guide.php',        'help',            'Assistant balance'],
+        ['aide',         'aide.php',         'help',            'Aide'],
+        ['guide',        'guide.php',        'scale',           'Assistant balance'],
       ];
       if (est_admin($moi)) {
         $liens[] = ['produits',    'produits.php',    'inventory', 'Produits'];
