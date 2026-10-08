@@ -36,6 +36,32 @@ function aide_chapitres(): array {
 ],
 
 // ─────────────────────────────────────────────────────────────
+'debutant' => [
+  'titre' => "Ma première journée, pas à pas",
+  'icone' => 'school',
+  'resume' => "Le guide du débutant : de l'installation au registre, dans l'ordre.",
+  'intro' => "Si vous découvrez le logiciel, suivez cette liste de haut en bas. Chaque ligne "
+           . "renvoie au chapitre qui détaille. <strong>Vous ne pouvez pas vous tromper d'ordre</strong> "
+           . "sans que le logiciel vous le dise : il refuse d'ouvrir une fabrication sans matière première.",
+  'etapes' => [
+    ['Avant tout (une seule fois)', "Un administrateur renseigne Paramètres → Mon atelier et Étiquettes (numéros d'agrément). Voir « Les réglages à faire une fois »."],
+    ['Créer vos produits (une seule fois)', "Produits → Ajouter. Par exemple « Viande JB » : libellé, durée de vie en jours, conditionnement, conservation. Laissez « actif » coché, sinon le produit n'apparaît pas dans les listes."],
+    ['Le matin : enregistrer ce qui est arrivé', "Entrées → Nouvelle entrée, une ligne par livraison, avec la température. Le logiciel donne un numéro du type JB-041026."],
+    ['Ouvrir un lot de fabrication', "Atelier → Ouvrir un lot. Choisissez le produit, puis <strong>cochez toutes les matières premières utilisées</strong> (une seule suffit, il peut y en avoir plusieurs)."],
+    ['Étiqueter toute la journée', "Le numéro de lot (par exemple 041026-1) est déjà là : on imprime ou on pèse les barquettes au fur et à mesure."],
+    ['Le soir : clôturer', "Indiquez la quantité réellement produite et la DLC. Le lot passe au registre."],
+    ['En cas de doute', "Traça pour retrouver d'où vient un produit, Exports pour sortir les registres, et le mémo en bas de cette page pour les règles."],
+  ],
+  'regles' => [
+    "Ordre obligatoire : <strong>entrée → fabrication → clôture</strong>. Sans entrée enregistrée, rien ne peut être fabriqué.",
+    "Un produit absent des listes est soit non créé, soit décoché « actif » : voir Produits.",
+    "Une erreur de saisie se corrige : voir « Corriger une erreur ». On ne supprime pas un lot dont les étiquettes sont déjà parties.",
+    "Les écrans Produits, Paramètres, Matériel et Utilisateurs sont réservés aux administrateurs ; tout le reste est ouvert à l'atelier.",
+  ],
+  'liens' => [['entrees.php', 'Entrées'], ['atelier.php', 'Atelier'], ['produits.php', 'Produits']],
+],
+
+// ─────────────────────────────────────────────────────────────
 'entree' => [
   'titre' => "1. Recevoir une matière première",
   'icone' => 'move_to_inbox',
@@ -89,8 +115,33 @@ function aide_chapitres(): array {
 ],
 
 // ─────────────────────────────────────────────────────────────
+'plusieurs-lots' => [
+  'titre' => "3. Plusieurs lots d'entrée dans une fabrication",
+  'icone' => 'playlist_add',
+  'resume' => "Un même produit fait avec deux carcasses, ou deux livraisons : comment les rattacher toutes.",
+  'intro' => "Une fabrication peut venir de <strong>plusieurs</strong> lots d'entrée : deux carcasses "
+           . "pour une même viande hachée, ou deux fournisseurs pour un même pâté. Il faut tous les "
+           . "déclarer, sinon la traçabilité est incomplète en cas de rappel.",
+  'etapes' => [
+    ['Depuis l\'Atelier (le cas courant)', "Atelier → Ouvrir un lot. Dans « Avec quelle matière première ? », <strong>cochez autant de lots que nécessaire</strong>."],
+    ['Si la liste est longue', "Elle défile : faites-la glisser. Seuls les 40 lots d'entrée les plus récents sont proposés ; un lot plus ancien doit être rattaché depuis le registre des Fabrications."],
+    ['Depuis le registre des Fabrications', "Fabrications → Nouvelle fabrication (ou le crayon sur une fabrication existante). Dans « Lots d'entrée utilisés », chaque ligne est un lot ; le bouton « Ajouter un lot » en ajoute une."],
+    ['Quantité par lot (facultatif)', "À droite de chaque ligne, les kg pris dans ce lot d'entrée. Utile pour suivre ce qu'il reste ; vous pouvez la laisser vide."],
+    ['Retirer un lot', "La corbeille rouge au bout de la ligne retire ce lot de la fabrication, pas du registre des entrées."],
+    ['Un lot oublié après coup', "Fabrications → ouvrir la fabrication → modifier, puis « Ajouter un lot ». Cela marche aussi pour un lot encore ouvert à l'Atelier."],
+  ],
+  'regles' => [
+    "Il faut <strong>au moins un</strong> lot d'entrée ; il n'y a pas de maximum.",
+    "Un même lot d'entrée peut servir à <strong>plusieurs fabrications</strong> (une carcasse = saucisse et merguez) : c'est normal, et c'est ce que la traçabilité descendante retrouve.",
+    "Si les lots d'entrée n'ont pas la même origine, le logiciel le signale sur l'étiquette au lieu d'imprimer une origine fausse.",
+    "Tant que la quantité par lot n'est pas saisie, elle apparaît vide : ce n'est pas une erreur.",
+  ],
+  'liens' => [['atelier.php', "Aller à l'Atelier"], ['fabrications.php?action=nouveau', 'Nouvelle fabrication']],
+],
+
+// ─────────────────────────────────────────────────────────────
 'deux-personnes' => [
-  'titre' => "3. Travailler à deux dans l'atelier",
+  'titre' => "4. Travailler à deux dans l'atelier",
   'icone' => 'group',
   'resume' => "Ce qui se passe quand deux téléphones saisissent en même temps.",
   'intro' => "Les deux personnes peuvent ouvrir et clôturer. Le logiciel évite qu'elles se marchent dessus.",
@@ -108,7 +159,7 @@ function aide_chapitres(): array {
 
 // ─────────────────────────────────────────────────────────────
 'lot-balance' => [
-  'titre' => "4. Le lot créé à la balance, pas dans le logiciel",
+  'titre' => "5. Le lot créé à la balance, pas dans le logiciel",
   'icone' => 'scale',
   'resume' => "Quand le numéro a été attribué avant, à la balance, et que les barquettes le portent déjà.",
   'intro' => "La règle est que le numéro naît dans TraçaBoucher. Mais si vous avez ouvert "
@@ -132,7 +183,7 @@ function aide_chapitres(): array {
 
 // ─────────────────────────────────────────────────────────────
 'etiquettes' => [
-  'titre' => "5. Les étiquettes",
+  'titre' => "6. Les étiquettes",
   'icone' => 'label',
   'resume' => "Les imprimer depuis le logiciel, ou récupérer celles de la balance.",
   'intro' => "Deux choses différentes portent le même mot. L'<strong>étiquette du logiciel</strong> "
@@ -157,7 +208,7 @@ function aide_chapitres(): array {
 
 // ─────────────────────────────────────────────────────────────
 'tracabilite' => [
-  'titre' => "6. Retrouver l'origine d'un produit",
+  'titre' => "7. Retrouver l'origine d'un produit",
   'icone' => 'account_tree',
   'resume' => "La question du contrôleur, et celle du rappel de lot.",
   'intro' => "Deux sens de lecture, selon la question posée.",
@@ -175,8 +226,30 @@ function aide_chapitres(): array {
 ],
 
 // ─────────────────────────────────────────────────────────────
+'corriger' => [
+  'titre' => "8. Corriger une erreur ou supprimer",
+  'icone' => 'edit_note',
+  'resume' => "Une faute de frappe, un mauvais produit, un lot saisi deux fois.",
+  'intro' => "Tout se corrige, mais pas n'importe comment : un numéro de lot déjà utilisé sur des "
+           . "étiquettes ne doit pas disparaître.",
+  'etapes' => [
+    ['Corriger une fabrication', "Fabrications → ouvrir le lot → crayon. Produit, quantité, lots d'entrée, DLC, notes : tout est modifiable."],
+    ['Corriger une entrée', "Entrées → ouvrir la réception → crayon. Température, fournisseur, origines."],
+    ['Supprimer une fabrication', "Bouton de suppression en bas de sa fiche, avec confirmation. C'est définitif."],
+    ['Supprimer une entrée', "Même chose depuis la fiche de l'entrée."],
+  ],
+  'regles' => [
+    "Une entrée <strong>déjà utilisée par une fabrication ne peut pas être supprimée</strong> : le logiciel l'indique. Retirez-la d'abord de la fabrication, ou corrigez-la plutôt que de la supprimer.",
+    "Supprimer le dernier lot d'un jour <strong>libère son numéro</strong> : si des étiquettes sont déjà parties, corrigez, ne supprimez pas.",
+    "Toute personne de l'atelier peut corriger ou supprimer, sans être administrateur.",
+    "Renommer un produit ne change pas les fabrications passées : leur libellé est figé.",
+  ],
+  'liens' => [['fabrications.php', 'Registre des fabrications'], ['entrees.php', 'Entrées']],
+],
+
+// ─────────────────────────────────────────────────────────────
 'registres' => [
-  'titre' => "7. Les registres et le contrôle",
+  'titre' => "9. Les registres et le contrôle",
   'icone' => 'download',
   'resume' => "Ce qu'on présente, et où le prendre.",
   'intro' => "Les exports sont ouverts à tout l'atelier : sortir un registre n'exige pas un compte administrateur.",
@@ -196,7 +269,7 @@ function aide_chapitres(): array {
 
 // ─────────────────────────────────────────────────────────────
 'produits' => [
-  'titre' => "8. Les produits et la balance",
+  'titre' => "10. Les produits et la balance",
   'icone' => 'inventory',
   'resume' => "Le catalogue que la balance imprime.",
   'intro' => "Le référentiel produits est la source de vérité, pour le logiciel comme pour la "
@@ -220,7 +293,7 @@ function aide_chapitres(): array {
 
 // ─────────────────────────────────────────────────────────────
 'bio' => [
-  'titre' => "9. Composition et mention bio",
+  'titre' => "11. Composition et mention bio",
   'icone' => 'eco',
   'resume' => "Ce qu'on a le droit d'écrire, et à partir de quand.",
   'intro' => "Pour les préparations — saucisses, pâtés, plats — la composition décide de ce que "
@@ -242,7 +315,7 @@ function aide_chapitres(): array {
 
 // ─────────────────────────────────────────────────────────────
 'reglages' => [
-  'titre' => "10. Les réglages à faire une fois",
+  'titre' => "12. Les réglages à faire une fois",
   'icone' => 'settings',
   'resume' => "Ce qu'il faut avoir renseigné avant d'imprimer la première étiquette.",
   'intro' => "Cinq onglets dans Paramètres. Une pastille rouge sur un onglet signale qu'il y manque quelque chose d'obligatoire.",
@@ -263,7 +336,7 @@ function aide_chapitres(): array {
 
 // ─────────────────────────────────────────────────────────────
 'comptes' => [
-  'titre' => "11. Les comptes et le PC de l'atelier",
+  'titre' => "13. Les comptes et le PC de l'atelier",
   'icone' => 'devices',
   'resume' => "Qui peut se connecter, et le pont vers la balance.",
   'intro' => "Les comptes sont communs à tous les services CAUSSELOT : un seul identifiant pour le portail et pour TraçaBoucher.",
