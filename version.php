@@ -18,7 +18,7 @@
 //  censé empêcher.
 // ============================================================
 
-function version_app(): string  { return '2.10.0'; }
+function version_app(): string  { return '2.10.1'; }
 function version_date(): string { return '2026-10-13'; }
 
 // Ex. : « v2.1.0 · 19/09/2026 »

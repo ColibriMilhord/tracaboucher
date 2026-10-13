@@ -592,6 +592,31 @@ function nb_sources_fab(int $sortie_id): int {
     return (int)$q->fetchColumn();
 }
 
+/**
+ * Ce qu'il reste d'un lot de fabrication une fois retirées les quantités
+ * prises par d'autres fabrications (la sauce faite, moins celle déjà mise
+ * dans des escalopes). Null tant que le lot n'est pas clôturé ou que sa
+ * quantité n'est pas en kg.
+ *
+ * Le stock des lots d'entrée n'est pas touché : il a baissé au moment où
+ * la sauce a été faite, pas quand elle est entrée dans les escalopes.
+ *
+ * @return ?array{produit: float, utilise: float, reste: float}
+ */
+function solde_fabrication(int $sortie_id): ?array {
+    $s = sortie_par_id($sortie_id);
+    if (!$s || ($s['statut'] ?? 'cloture') !== 'cloture' || ($s['unite'] ?? 'kg') !== 'kg' || (float)$s['quantite'] <= 0) {
+        return null;
+    }
+    $utilise = 0.0;
+    if (sources_fab_installe()) {
+        $q = db()->prepare('SELECT COALESCE(SUM(quantite_kg),0) FROM lots_sortie_sources WHERE source_sortie_id = ?');
+        $q->execute([$sortie_id]);
+        $utilise = (float)$q->fetchColumn();
+    }
+    return ['produit' => (float)$s['quantite'], 'utilise' => $utilise, 'reste' => max(0.0, (float)$s['quantite'] - $utilise)];
+}
+
 /** Identifiants de toutes les fabrications en amont (sources, sources des sources…). */
 function ancetres_sortie(int $sortie_id): array {
     $vus = [];

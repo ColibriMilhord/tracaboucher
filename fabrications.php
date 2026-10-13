@@ -33,24 +33,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
     $notes   = trim($_POST['notes'] ?? '');
     $edit_id = (int)($_POST['id'] ?? 0);
 
-    // Lots d'entrée utilisés
+    // Lots utilisés : une seule liste. « 12 » = lot d'entrée 12, « s12 » = fabrication 12
+    // (sauce, farce, mélange déjà fabriqué…).
     $ids_in  = $_POST['entree_id']  ?? [];
     $qtes_in = $_POST['entree_qte'] ?? [];
     $liens = [];
-    foreach ($ids_in as $i => $eid) {
-        $eid = (int)$eid;
-        if (!$eid || isset($liens[$eid])) continue;
-        $liens[$eid] = nombre($qtes_in[$i] ?? '');
-    }
-
-    // Fabrications utilisées (sauce, farce, mélange déjà fabriqué…)
-    $fabs_in = $_POST['source_id']  ?? [];
-    $fqtes   = $_POST['source_qte'] ?? [];
-    $fabs = [];
-    foreach ($fabs_in as $i => $fid) {
-        $fid = (int)$fid;
-        if (!$fid || isset($fabs[$fid])) continue;
-        $fabs[$fid] = nombre($fqtes[$i] ?? '');
+    $fabs  = [];
+    foreach ($ids_in as $i => $brut) {
+        $brut = trim((string)$brut);
+        $qte_l = nombre($qtes_in[$i] ?? '');
+        if (preg_match('/^s(\d+)$/', $brut, $m)) {
+            $fid = (int)$m[1];
+            if ($fid && !isset($fabs[$fid])) $fabs[$fid] = $qte_l;
+        } else {
+            $eid = (int)$brut;
+            if ($eid && !isset($liens[$eid])) $liens[$eid] = $qte_l;
+        }
     }
 
     $err = [];
@@ -208,29 +206,22 @@ if ($action === 'nouveau' || $action === 'modifier'):
             $fabs_dispo[] = $x;
         }
     }
-    $sel_fab = [];
-    if (!empty($_POST['source_id'])) {
-        foreach ($_POST['source_id'] as $i => $fid) {
-            if ((int)$fid) $sel_fab[] = ['id' => (int)$fid, 'qte' => $_POST['source_qte'][$i] ?? ''];
-        }
-    } elseif ($s) {
-        foreach (sources_fab_de_sortie($id) as $x) {
-            $sel_fab[] = ['id' => (int)$x['id'], 'qte' => $x['qte_utilisee'] === null ? '' : rtrim(rtrim($x['qte_utilisee'], '0'), '.')];
-        }
-    }
 
-    // Sélection en cours (repost, ou édition)
+    // Sélection en cours (repost, ou édition) : « 12 » pour une entrée, « s12 » pour une fabrication
     $sel = [];
     if (!empty($_POST['entree_id'])) {
-        foreach ($_POST['entree_id'] as $i => $eid) {
-            if ((int)$eid) $sel[] = ['id' => (int)$eid, 'qte' => $_POST['entree_qte'][$i] ?? ''];
+        foreach ($_POST['entree_id'] as $i => $brut) {
+            if (trim((string)$brut) !== '') $sel[] = ['id' => trim((string)$brut), 'qte' => $_POST['entree_qte'][$i] ?? ''];
         }
     } elseif ($s) {
         foreach (entrees_de_sortie($id) as $e) {
-            $sel[] = ['id' => (int)$e['id'], 'qte' => $e['qte_utilisee'] === null ? '' : rtrim(rtrim($e['qte_utilisee'], '0'), '.')];
+            $sel[] = ['id' => (string)(int)$e['id'], 'qte' => $e['qte_utilisee'] === null ? '' : rtrim(rtrim($e['qte_utilisee'], '0'), '.')];
+        }
+        foreach (sources_fab_de_sortie($id) as $x) {
+            $sel[] = ['id' => 's' . (int)$x['id'], 'qte' => $x['qte_utilisee'] === null ? '' : rtrim(rtrim($x['qte_utilisee'], '0'), '.')];
         }
     }
-    if (!$sel) $sel[] = ['id' => 0, 'qte' => ''];
+    if (!$sel) $sel[] = ['id' => '', 'qte' => ''];
 ?>
 <div class="flex items-center gap-3 mb-6">
   <a href="fabrications.php" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container p-2 rounded-full">arrow_back</a>
@@ -282,21 +273,38 @@ if ($action === 'nouveau' || $action === 'modifier'):
 
   <!-- Lots d'entrée utilisés -->
   <div class="border-t border-outline-variant pt-4" data-lots>
-    <label class="block text-sm font-semibold mb-2">Lots d'entrée utilisés <span class="text-error">*</span></label>
-    <script type="application/json" id="lots-dispo"><?= json_encode(array_map(function ($d) {
-        return ['id' => (int)$d['id'], 'num' => $d['num_lot'], 'type' => $d['type_libelle'],
-                'fourn' => $d['fournisseur'], 'date' => fmt_date($d['date_entree'])];
-    }, $dispo), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
+    <label class="block text-sm font-semibold mb-2">Lots utilisés <span class="text-error">*</span></label>
+    <script type="application/json" id="lots-dispo"><?= json_encode(array_merge(
+        array_map(function ($d) {
+            return ['id' => (string)(int)$d['id'], 'kind' => 'e', 'num' => $d['num_lot'], 'type' => $d['type_libelle'],
+                    'fourn' => $d['fournisseur'], 'date' => fmt_date($d['date_entree'])];
+        }, $dispo),
+        array_map(function ($d) {
+            return ['id' => 's' . (int)$d['id'], 'kind' => 's', 'num' => $d['num_lot'], 'type' => 'Fabrication',
+                    'fourn' => $d['produit'], 'date' => fmt_date($d['date_fabrication'])];
+        }, $fabs_dispo)
+    ), JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
     <div id="lignes" class="flex flex-col gap-2">
       <?php foreach ($sel as $ligne): ?>
       <div class="ligne flex gap-2 items-center">
         <select name="entree_id[]" class="flex-1 rounded-xl border-outline-variant text-sm">
           <option value="">— choisir un lot —</option>
+          <optgroup label="Lots d'entrée">
           <?php foreach ($dispo as $d): ?>
-          <option value="<?= (int)$d['id'] ?>" <?= $ligne['id'] == $d['id'] ? 'selected' : '' ?>>
+          <option value="<?= (int)$d['id'] ?>" <?= (string)$ligne['id'] === (string)(int)$d['id'] ? 'selected' : '' ?>>
             <?= h($d['num_lot']) ?> — <?= h($d['type_libelle']) ?> — <?= h($d['fournisseur']) ?> (<?= fmt_date($d['date_entree']) ?>)
           </option>
           <?php endforeach ?>
+          </optgroup>
+          <?php if ($fabs_dispo): ?>
+          <optgroup label="Fabrications (sauce, farce…)">
+          <?php foreach ($fabs_dispo as $d): ?>
+          <option value="s<?= (int)$d['id'] ?>" <?= (string)$ligne['id'] === 's' . (int)$d['id'] ? 'selected' : '' ?>>
+            <?= h($d['num_lot']) ?> — <?= h($d['produit']) ?> (<?= fmt_date($d['date_fabrication']) ?>)
+          </option>
+          <?php endforeach ?>
+          </optgroup>
+          <?php endif ?>
         </select>
         <input type="text" inputmode="decimal" name="entree_qte[]" placeholder="kg" value="<?= h((string)$ligne['qte']) ?>"
                class="w-20 shrink-0 rounded-xl border-outline-variant text-sm">
@@ -309,39 +317,8 @@ if ($action === 'nouveau' || $action === 'modifier'):
             class="mt-3 min-h-[48px] w-full sm:w-auto sm:px-5 rounded-full bg-surface-container-low text-primary font-semibold text-sm flex items-center justify-center gap-2 active:bg-surface-container">
       <span class="material-symbols-outlined">add_circle</span>Ajouter un lot
     </button>
-    <p class="text-xs text-on-surface-variant mt-2">La quantité en kg est facultative : elle sert au suivi de consommation des lots d'entrée.</p>
+    <p class="text-xs text-on-surface-variant mt-2">Lots d'entrée, ou fabrications déjà faites (sauce, farce…) : les matières premières de celles-ci restent tracées. La quantité en kg est facultative.</p>
 
-    <?php if ($fabs_dispo || $sel_fab): ?>
-    <!-- Cas minoritaire : replié tant qu'aucune fabrication n'est utilisée -->
-    <details class="mt-4 bg-surface-container-low rounded-xl px-4 py-3" <?= $sel_fab ? 'open' : '' ?>>
-      <summary class="cursor-pointer select-none text-sm font-semibold text-primary flex items-center gap-2">
-        <span class="material-symbols-outlined text-base">layers</span>Utilise aussi une fabrication (sauce, farce, mélange…)
-      </summary>
-      <div id="lignes-fab" class="flex flex-col gap-2 mt-3">
-        <?php foreach ($sel_fab ?: [['id' => 0, 'qte' => '']] as $ligne): ?>
-        <div class="ligne-fab flex gap-2 items-center">
-          <select name="source_id[]" class="flex-1 min-w-0 rounded-xl border-outline-variant text-sm">
-            <option value="">— choisir une fabrication —</option>
-            <?php foreach ($fabs_dispo as $d): ?>
-            <option value="<?= (int)$d['id'] ?>" <?= $ligne['id'] == $d['id'] ? 'selected' : '' ?>>
-              <?= h($d['num_lot']) ?> — <?= h($d['produit']) ?> (<?= fmt_date($d['date_fabrication']) ?>)
-            </option>
-            <?php endforeach ?>
-          </select>
-          <input type="text" inputmode="decimal" name="source_qte[]" placeholder="kg" value="<?= h((string)$ligne['qte']) ?>"
-                 class="w-20 shrink-0 rounded-xl border-outline-variant text-sm">
-          <button type="button" onclick="this.closest('.ligne-fab').remove()" aria-label="Retirer cette fabrication"
-                  class="material-symbols-outlined shrink-0 text-error min-w-[48px] min-h-[48px] rounded-full active:bg-error-container">delete</button>
-        </div>
-        <?php endforeach ?>
-      </div>
-      <button type="button" onclick="(function(){var z=document.getElementById('lignes-fab');var n=z.querySelector('.ligne-fab').cloneNode(true);n.querySelector('select').selectedIndex=0;n.querySelector('input').value='';z.appendChild(n);})()"
-              class="mt-3 min-h-[48px] px-5 rounded-full bg-surface text-primary font-semibold text-sm flex items-center gap-2">
-        <span class="material-symbols-outlined">add_circle</span>Ajouter une fabrication
-      </button>
-      <p class="text-xs text-on-surface-variant mt-2">Les matières premières de cette fabrication restent tracées : inutile de les ressaisir.</p>
-    </details>
-    <?php endif ?>
   </div>
 
   <div class="grid sm:grid-cols-2 gap-4 border-t border-outline-variant pt-4">
@@ -424,6 +401,7 @@ elseif ($action === 'voir' && $id):
     $sources_fab = sources_fab_de_sortie($id);
     $utilisee_dans = descendants_sortie($id);
     $racines = $sources_fab ? entrees_racines_de_sortie($id) : [];
+    $solde_fab = $utilisee_dans ? solde_fabrication($id) : null;
 ?>
 <div class="flex items-center gap-3 mb-6">
   <a href="fabrications.php" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container p-2 rounded-full">arrow_back</a>
@@ -461,6 +439,16 @@ elseif ($action === 'voir' && $id):
     <span class="material-symbols-outlined">photo_camera</span>Voir la photo</a>
   <?php endif ?>
 </div>
+
+<?php if ($solde_fab && $solde_fab['utilise'] > 0): ?>
+<div class="bg-surface rounded-xl border border-outline-variant p-4 mb-5 text-sm">
+  <div class="text-xs text-on-surface-variant mb-1">Utilisation dans d'autres fabrications</div>
+  <div class="font-semibold">
+    <?= fmt_qte($solde_fab['utilise']) ?> utilisés sur <?= fmt_qte($solde_fab['produit']) ?> fabriqués
+    · reste <?= fmt_qte($solde_fab['reste']) ?>
+  </div>
+</div>
+<?php endif ?>
 
 <?php $org = origine_fabrication($id); ?>
 <?php if ($org['melange']): ?>
