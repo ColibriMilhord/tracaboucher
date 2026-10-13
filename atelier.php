@@ -49,8 +49,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ouvrir'])) {
         if ($eid) { $liens[$eid] = null; }   // la quantité utilisée se précise à la clôture
     }
 
+    // Fabrications déjà faites qui entrent dans ce lot (sauce, farce…)
+    $fabs = [];
+    foreach ((array)($_POST['source_fab'] ?? []) as $fid) {
+        $fid = (int)$fid;
+        if ($fid && sortie_par_id($fid)) { $fabs[$fid] = null; }
+    }
+
     if ($produit === '')      { $err = 'Choisissez le produit.'; }
-    elseif (!$liens)          { $err = 'Indiquez au moins une matière première utilisée.'; }
+    elseif (!$liens && !$fabs) { $err = 'Indiquez au moins une matière première ou une fabrication utilisée.'; }
     else {
         try {
             // Conditionnement, conservation et DLC viennent du référentiel :
@@ -64,7 +71,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['ouvrir'])) {
                     $defauts['dlc'] = date('Y-m-d', strtotime($date_fab . ' +' . (int)$ref['dlc_jours'] . ' days'));
                 }
             }
-            $lot = ouvrir_lot($date_fab, $produit, $produit_id ?: null, $liens, $moi, $defauts);
+            $lot = ouvrir_lot($date_fab, $produit, $produit_id ?: null, $liens, $moi, $defauts, $fabs);
             $_SESSION['atelier_msg'] = 'ouvert:' . $lot['id'];
             header('Location: atelier.php'); exit;
         } catch (Throwable $e) {
@@ -135,6 +142,15 @@ $entrees = $pdo->query(
        FROM lots_entree e JOIN types_matiere t ON t.id = e.type_id
       ORDER BY e.date_entree DESC, e.id DESC LIMIT 40'
 )->fetchAll();
+
+// Fabrications récentes, proposées comme composant (sauce déjà faite, etc.).
+$fabs_recentes = [];
+if (sources_fab_installe()) {
+    $q = $pdo->prepare('SELECT id, num_lot, produit, date_fabrication, statut FROM lots_sortie
+                         WHERE date_fabrication >= ? ORDER BY date_fabrication DESC, id DESC LIMIT 40');
+    $q->execute([date('Y-m-d', strtotime('-21 days'))]);
+    $fabs_recentes = $q->fetchAll();
+}
 
 require __DIR__ . '/includes/header.php';
 ?>
@@ -238,6 +254,26 @@ if ($ouvert_a_afficher):
       </div>
       <?php endif ?>
 
+      <?php if ($fabs_recentes): ?>
+      <details class="mb-4">
+        <summary class="cursor-pointer select-none text-sm font-semibold text-primary flex items-center gap-2">
+          <span class="material-symbols-outlined text-base">layers</span>Ajouter une préparation déjà fabriquée (sauce, farce…)
+        </summary>
+        <div class="border border-outline-variant rounded-xl divide-y divide-outline-variant max-h-48 overflow-y-auto mt-2">
+          <?php foreach ($fabs_recentes as $f): ?>
+          <label class="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-surface-container-low">
+            <input type="checkbox" name="source_fab[]" value="<?= (int)$f['id'] ?>" class="rounded border-outline-variant text-primary">
+            <span class="flex-1 min-w-0">
+              <span class="lot-badge text-sm font-bold"><?= h($f['num_lot']) ?></span>
+              <span class="block text-xs text-on-surface-variant truncate"><?= h($f['produit']) ?> · <?= fmt_date($f['date_fabrication']) ?></span>
+            </span>
+          </label>
+          <?php endforeach ?>
+        </div>
+        <p class="text-xs text-on-surface-variant mt-1">Ses propres matières premières restent tracées automatiquement.</p>
+      </details>
+      <?php endif ?>
+
       <button name="ouvrir" value="1" class="w-full bg-primary text-on-primary rounded-full py-4 font-bold text-base">
         Ouvrir le lot
       </button>
@@ -275,7 +311,7 @@ if ($ouvert_a_afficher):
           <div class="text-xs text-on-surface-variant">
             ouvert <?= $l['ouvert_le'] ? 'à ' . h(date('H\hi', strtotime($l['ouvert_le']))) : '' ?>
             <?= $l['ouvert_par'] ? 'par ' . h($l['ouvert_par']) : '' ?>
-            · <?= count($l['sources']) ?> matière(s)
+            · <?= count($l['sources']) ?> matière(s)<?= $l['fabs'] ? ' + ' . count($l['fabs']) . ' fabrication(s)' : '' ?>
             <?php if ($l['etiq']): ?>
             · <strong><?= count($l['etiq']) ?> étiquette(s)</strong> · <?= fmt_qte($l['poids_etiq']) ?>
             <?php endif ?>
@@ -287,7 +323,7 @@ if ($ouvert_a_afficher):
         </a>
       </div>
 
-      <?php if (!$l['sources']): ?>
+      <?php if (!$l['sources'] && !$l['fabs']): ?>
       <!-- Lot né d'une étiquette : la balance ne sait rien des entrées -->
       <div class="bg-error-container text-on-error-container rounded-lg p-3 mb-3">
         <div class="font-bold text-sm mb-1 flex items-center gap-2">
@@ -351,9 +387,9 @@ if ($ouvert_a_afficher):
             <input type="date" name="dlc" value="<?= h($l['dlc'] ?? '') ?>" class="w-full rounded-xl border-outline-variant">
           </div>
           <div class="flex items-end">
-            <button name="cloturer" value="1" <?= $l['sources'] ? '' : 'disabled' ?>
-                    class="w-full bg-primary text-on-primary rounded-full py-3 font-bold text-sm <?= $l['sources'] ? '' : 'opacity-40' ?>"
-                    <?= $l['sources'] ? '' : 'title="Indiquez d\'abord la matière première"' ?>>
+            <button name="cloturer" value="1" <?= ($l['sources'] || $l['fabs']) ? '' : 'disabled' ?>
+                    class="w-full bg-primary text-on-primary rounded-full py-3 font-bold text-sm <?= ($l['sources'] || $l['fabs']) ? '' : 'opacity-40' ?>"
+                    <?= ($l['sources'] || $l['fabs']) ? '' : 'title="Indiquez d\'abord la matière première"' ?>>
               Clôturer
             </button>
           </div>

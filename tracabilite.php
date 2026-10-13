@@ -24,6 +24,34 @@ if ($q !== '') {
     $res_sorties = $s2->fetchAll();
 }
 
+/** Affiche l'arbre amont d'une fabrication : entrées, puis fabrications utilisées et leurs propres origines. */
+function afficher_amont(array $arbre, int $niveau = 0): void {
+    foreach ($arbre['entrees'] as $e): ?>
+      <a href="entrees.php?action=voir&id=<?= (int)$e['id'] ?>" class="flex items-center gap-2 text-sm hover:underline">
+        <span class="lot-badge text-xs font-bold text-white px-2 py-0.5 rounded" style="background:<?= h($e['couleur']) ?>"><?= h($e['code']) ?></span>
+        <span class="lot-badge font-semibold"><?= h($e['num_lot']) ?></span>
+        <span class="text-on-surface-variant truncate"><?= h($e['fournisseur']) ?> · <?= fmt_date($e['date_entree']) ?></span>
+        <?php if ($e['qte_utilisee'] !== null): ?><span class="ml-auto text-xs font-semibold"><?= fmt_qte((float)$e['qte_utilisee']) ?></span><?php endif ?>
+      </a>
+    <?php endforeach;
+    foreach ($arbre['fabs'] as $f): $lot = $f['lot']; ?>
+      <div class="flex flex-col gap-2">
+        <a href="fabrications.php?action=voir&id=<?= (int)$lot['id'] ?>" class="flex items-center gap-2 text-sm hover:underline">
+          <span class="material-symbols-outlined text-base text-primary">layers</span>
+          <span class="lot-badge font-semibold text-primary"><?= h($lot['num_lot']) ?></span>
+          <span class="text-on-surface-variant truncate"><?= h($lot['produit']) ?> · <?= fmt_date($lot['date_fabrication']) ?></span>
+          <?php if ($f['qte'] !== null): ?><span class="ml-auto text-xs font-semibold"><?= fmt_qte((float)$f['qte']) ?></span><?php endif ?>
+        </a>
+        <div class="border-l-2 border-outline-variant pl-4 ml-2 flex flex-col gap-2">
+          <?php afficher_amont($f['arbre'], $niveau + 1);
+          if (!$f['arbre']['entrees'] && !$f['arbre']['fabs']): ?>
+          <p class="text-sm text-error">Aucune matière première rattachée.</p>
+          <?php endif ?>
+        </div>
+      </div>
+    <?php endforeach;
+}
+
 require __DIR__ . '/includes/header.php';
 ?>
 
@@ -56,7 +84,7 @@ require __DIR__ . '/includes/header.php';
 <?php if ($res_sorties): ?>
 <h3 class="font-headline-md font-bold mb-3">Fabrications (<?= count($res_sorties) ?>) — traçabilité ascendante</h3>
 <div class="flex flex-col gap-4 mb-8">
-  <?php foreach ($res_sorties as $s): $sources = entrees_de_sortie((int)$s['id']); ?>
+  <?php foreach ($res_sorties as $s): $arbre = arbre_amont_sortie((int)$s['id']); $descend = descendants_sortie((int)$s['id']); ?>
   <div class="bg-surface rounded-xl border border-outline-variant p-5">
     <div class="flex items-start gap-3 mb-3">
       <div class="flex-1">
@@ -72,16 +100,23 @@ require __DIR__ . '/includes/header.php';
       </a>
     </div>
     <div class="border-l-2 border-outline-variant pl-4 flex flex-col gap-2">
-      <?php foreach ($sources as $e): ?>
-      <a href="entrees.php?action=voir&id=<?= (int)$e['id'] ?>" class="flex items-center gap-2 text-sm hover:underline">
-        <span class="lot-badge text-xs font-bold text-white px-2 py-0.5 rounded" style="background:<?= h($e['couleur']) ?>"><?= h($e['code']) ?></span>
-        <span class="lot-badge font-semibold"><?= h($e['num_lot']) ?></span>
-        <span class="text-on-surface-variant truncate"><?= h($e['fournisseur']) ?> · <?= fmt_date($e['date_entree']) ?></span>
-        <?php if ($e['qte_utilisee'] !== null): ?><span class="ml-auto text-xs font-semibold"><?= fmt_qte((float)$e['qte_utilisee']) ?></span><?php endif ?>
-      </a>
-      <?php endforeach ?>
-      <?php if (!$sources): ?><p class="text-sm text-error">Aucun lot d'entrée rattaché.</p><?php endif ?>
+      <?php afficher_amont($arbre) ?>
+      <?php if (!$arbre['entrees'] && !$arbre['fabs']): ?><p class="text-sm text-error">Aucun lot d'entrée rattaché.</p><?php endif ?>
     </div>
+    <?php if ($descend): ?>
+    <div class="mt-3 pt-3 border-t border-outline-variant">
+      <div class="text-xs font-semibold text-on-surface-variant mb-2">Entre dans la composition de</div>
+      <div class="flex flex-col gap-1">
+        <?php foreach ($descend as $d): ?>
+        <a href="fabrications.php?action=voir&id=<?= (int)$d['id'] ?>" class="flex items-center gap-2 text-sm hover:underline" style="margin-left:<?= ((int)$d['profondeur'] - 1) * 16 ?>px">
+          <span class="material-symbols-outlined text-base text-primary">subdirectory_arrow_right</span>
+          <span class="lot-badge font-semibold text-primary"><?= h($d['num_lot']) ?></span>
+          <span class="text-on-surface-variant truncate"><?= h($d['produit']) ?> · <?= fmt_date($d['date_fabrication']) ?></span>
+        </a>
+        <?php endforeach ?>
+      </div>
+    </div>
+    <?php endif ?>
   </div>
   <?php endforeach ?>
 </div>
@@ -90,7 +125,7 @@ require __DIR__ . '/includes/header.php';
 <?php if ($res_entrees): ?>
 <h3 class="font-headline-md font-bold mb-3">Entrées (<?= count($res_entrees) ?>) — traçabilité descendante</h3>
 <div class="flex flex-col gap-4">
-  <?php foreach ($res_entrees as $e): $usages = sorties_de_entree((int)$e['id']); ?>
+  <?php foreach ($res_entrees as $e): $usages = sorties_issues_de_entree((int)$e['id']); ?>
   <div class="bg-surface rounded-xl border border-outline-variant p-5">
     <div class="flex items-start gap-3 mb-3">
       <span class="lot-badge text-xs font-bold text-white px-2 py-1 rounded" style="background:<?= h($e['couleur']) ?>"><?= h($e['code']) ?></span>
@@ -107,9 +142,10 @@ require __DIR__ . '/includes/header.php';
     </div>
     <div class="border-l-2 border-outline-variant pl-4 flex flex-col gap-2">
       <?php foreach ($usages as $s): ?>
-      <a href="fabrications.php?action=voir&id=<?= (int)$s['id'] ?>" class="flex items-center gap-2 text-sm hover:underline">
+      <a href="fabrications.php?action=voir&id=<?= (int)$s['id'] ?>" class="flex items-center gap-2 text-sm hover:underline" style="margin-left:<?= !empty($s['via']) ? 16 : 0 ?>px">
+        <?php if (!empty($s['via'])): ?><span class="material-symbols-outlined text-base text-primary">subdirectory_arrow_right</span><?php endif ?>
         <span class="lot-badge font-semibold text-primary"><?= h($s['num_lot']) ?></span>
-        <span class="text-on-surface-variant truncate"><?= h($s['produit']) ?> · <?= fmt_date($s['date_fabrication']) ?></span>
+        <span class="text-on-surface-variant truncate"><?= h($s['produit']) ?> · <?= fmt_date($s['date_fabrication']) ?><?= !empty($s['via']) ? ' · via ' . h($s['via']) : '' ?></span>
         <?php if ($s['qte_utilisee'] !== null): ?><span class="ml-auto text-xs font-semibold"><?= fmt_qte((float)$s['qte_utilisee']) ?></span><?php endif ?>
       </a>
       <?php endforeach ?>

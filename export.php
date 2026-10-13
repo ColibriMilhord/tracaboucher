@@ -49,11 +49,31 @@ if ($type === 'sortie' && $id) {
     $lignes[] = ['Saisi par', $s['cree_par'] ?? ''];
     $lignes[] = ['Saisi le', date('d/m/Y H:i', strtotime($s['date_creation']))];
     $lignes[] = [];
-    $lignes[] = ['MATIERES PREMIERES UTILISEES'];
+    $fabs_src = sources_fab_de_sortie($id);
+    if ($fabs_src) {
+        $lignes[] = ['FABRICATIONS UTILISEES'];
+        $lignes[] = ['N° lot fabrication', 'Produit', 'Date', 'Qté utilisée (kg)'];
+        foreach ($fabs_src as $f) {
+            $lignes[] = [$f['num_lot'], $f['produit'], fmt_date($f['date_fabrication']), $f['qte_utilisee'] ?? ''];
+        }
+        $lignes[] = [];
+    }
+    $lignes[] = [$fabs_src ? 'MATIERES PREMIERES UTILISEES DIRECTEMENT' : 'MATIERES PREMIERES UTILISEES'];
     $lignes[] = ['N° lot entrée', 'Type', 'Date réception', 'Fournisseur', 'Lot fournisseur', 'Température (°C)', 'Qté utilisée (kg)'];
     foreach (entrees_de_sortie($id) as $e) {
         $lignes[] = [$e['num_lot'], $e['type_libelle'], fmt_date($e['date_entree']), $e['fournisseur'],
                      $e['num_lot_fournisseur'] ?? '', $e['temperature'], $e['qte_utilisee'] ?? ''];
+    }
+    if ($fabs_src) {
+        $directs = array_column(entrees_de_sortie($id), 'id');
+        $lignes[] = [];
+        $lignes[] = ['MATIERES PREMIERES D\'ORIGINE VIA LES FABRICATIONS UTILISEES'];
+        $lignes[] = ['N° lot entrée', 'Type', 'Date réception', 'Fournisseur', 'Lot fournisseur', 'Température (°C)'];
+        foreach (entrees_racines_de_sortie($id) as $e) {
+            if (in_array($e['id'], $directs)) continue;
+            $lignes[] = [$e['num_lot'], $e['type_libelle'], fmt_date($e['date_entree']), $e['fournisseur'],
+                         $e['num_lot_fournisseur'] ?? '', $e['temperature']];
+        }
     }
 
 } elseif ($type === 'entree' && $id) {
@@ -77,8 +97,8 @@ if ($type === 'sortie' && $id) {
     $lignes[] = [];
     $lignes[] = ['FABRICATIONS ISSUES DE CE LOT'];
     $lignes[] = ['N° lot fabrication', 'Date', 'Produit', 'Quantité', 'Conditionnement', 'Conservation', 'Qté utilisée (kg)'];
-    foreach (sorties_de_entree($id) as $s) {
-        $lignes[] = [$s['num_lot'], fmt_date($s['date_fabrication']), $s['produit'],
+    foreach (sorties_issues_de_entree($id) as $s) {
+        $lignes[] = [$s['num_lot'] . (!empty($s['via']) ? ' (via ' . $s['via'] . ')' : ''), fmt_date($s['date_fabrication']), $s['produit'],
                      $s['quantite'] . ' ' . $s['unite'], LIB_CONDITIONNEMENT[$s['conditionnement']] ?? '',
                      LIB_CONSERVATION[$s['conservation']] ?? '', $s['qte_utilisee'] ?? ''];
     }
@@ -97,11 +117,14 @@ if ($type === 'sortie' && $id) {
 
 } elseif ($type === 'registre_fabrications') {
     $nom = 'registre_fabrications_' . date('Ymd');
-    $lignes[] = ['N° de lot', 'Date', 'Produit', 'Quantité', 'Unité', 'Lots d\'entrée utilisés',
+    $lignes[] = ['N° de lot', 'Date', 'Produit', 'Quantité', 'Unité', 'Lots d\'entrée et fabrications utilisés',
                  'Conditionnement', 'Conservation', 'DLC', 'Cuisson', 'Refroidissement', 'Notes', 'Saisi par'];
     $rows = $pdo->query('SELECT * FROM lots_sortie ORDER BY date_fabrication, id');
     foreach ($rows as $s) {
-        $srcs = array_map(fn($e) => $e['num_lot'], entrees_de_sortie((int)$s['id']));
+        $srcs = array_merge(
+            array_map(fn($e) => $e['num_lot'], entrees_de_sortie((int)$s['id'])),
+            array_map(fn($f) => $f['num_lot'], sources_fab_de_sortie((int)$s['id']))
+        );
         $lignes[] = [$s['num_lot'], fmt_date($s['date_fabrication']), $s['produit'], $s['quantite'], $s['unite'],
                      implode(' + ', $srcs), LIB_CONDITIONNEMENT[$s['conditionnement']] ?? '',
                      LIB_CONSERVATION[$s['conservation']] ?? '', fmt_date($s['dlc']),
@@ -190,7 +213,7 @@ if ($type === 'sortie' && $id) {
     $q->execute([$depuis, $jusqu]);
 
     foreach ($q as $s) {
-        $sources  = entrees_de_sortie((int)$s['id']);
+        $sources  = entrees_racines_de_sortie((int)$s['id']);   // toute la chaîne, fabrications utilisées comprises
         $org      = origine_fabrication((int)$s['id']);
         $mentions = $sources ? origine_lot($sources[0])['lignes'] : [];
         $lignes[] = [

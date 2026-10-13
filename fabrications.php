@@ -43,13 +43,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
         $liens[$eid] = nombre($qtes_in[$i] ?? '');
     }
 
+    // Fabrications utilisées (sauce, farce, mélange déjà fabriqué…)
+    $fabs_in = $_POST['source_id']  ?? [];
+    $fqtes   = $_POST['source_qte'] ?? [];
+    $fabs = [];
+    foreach ($fabs_in as $i => $fid) {
+        $fid = (int)$fid;
+        if (!$fid || isset($fabs[$fid])) continue;
+        $fabs[$fid] = nombre($fqtes[$i] ?? '');
+    }
+
     $err = [];
     if (!$date_f)                       $err[] = 'la date';
     if ($produit === '')                $err[] = 'le nom du produit';
     if ($qte === null || $qte <= 0)     $err[] = 'la quantité fabriquée';
     if (!isset(LIB_CONDITIONNEMENT[$cond])) $err[] = 'le conditionnement';
     if (!isset(LIB_CONSERVATION[$consv]))   $err[] = 'la conservation';
-    if (!$liens)                        $err[] = 'au moins un lot d\'entrée utilisé';
+    if (!$liens && !$fabs)              $err[] = 'au moins un lot d\'entrée ou une fabrication utilisée';
+    if ($fabs && !sources_fab_installe()) {
+        $err[] = 'la migration 008 (fabrications composées) n\'est pas appliquée : lancez « Mise à jour de la base »';
+    }
+    foreach (array_keys($fabs) as $fid) {
+        if (!sortie_par_id($fid))           { $err[] = 'une fabrication choisie n\'existe plus'; break; }
+        if (!source_fab_valide($edit_id, $fid)) {
+            $autre = sortie_par_id($fid);
+            $err[] = 'la fabrication ' . ($autre['num_lot'] ?? $fid) . ' ne peut pas être utilisée ici (elle dépend déjà de ce lot)';
+            break;
+        }
+    }
 
     if ($err) {
         $msg = 'Champs obligatoires manquants : ' . implode(', ', $err) . '.';
@@ -87,6 +108,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
             $ins = $pdo->prepare('INSERT INTO lots_sortie_entrees (sortie_id, entree_id, quantite_kg) VALUES (?,?,?)');
             foreach ($liens as $eid => $q_kg) $ins->execute([$sortie_id, $eid, $q_kg]);
 
+            if (sources_fab_installe()) {
+                $pdo->prepare('DELETE FROM lots_sortie_sources WHERE sortie_id=?')->execute([$sortie_id]);
+                $insf = $pdo->prepare('INSERT INTO lots_sortie_sources (sortie_id, source_sortie_id, quantite_kg) VALUES (?,?,?)');
+                foreach ($fabs as $fid => $q_kg) $insf->execute([$sortie_id, $fid, $q_kg]);
+            }
+
             $pdo->commit();
             header('Location: fabrications.php?action=voir&id=' . $sortie_id . '&msg=' . ($edit_id ? 'maj' : 'cree'));
             exit;
@@ -101,6 +128,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['save'])) {
 
 // ── Suppression
 if ($action === 'supprimer' && $id) {
+    // Une fabrication entrée dans une autre ne se supprime pas : ce serait
+    // couper la chaîne de traçabilité de celle qui l'utilise.
+    if (nb_fabs_utilisant_sortie($id) > 0) {
+        header('Location: fabrications.php?action=voir&id=' . $id . '&msg=lie');
+        exit;
+    }
+    if (sources_fab_installe()) {
+        $pdo->prepare('DELETE FROM lots_sortie_sources WHERE sortie_id=?')->execute([$id]);
+    }
     $pdo->prepare('DELETE FROM lots_sortie WHERE id=?')->execute([$id]);
     header('Location: fabrications.php?msg=suppr');
     exit;
@@ -112,6 +148,7 @@ $flashes = [
     'cree'  => 'Lot de fabrication créé.',
     'maj'   => 'Fabrication mise à jour.',
     'suppr' => 'Fabrication supprimée.',
+    'lie'   => 'Suppression impossible : cette fabrication a servi à en fabriquer une autre. Retirez-la d\'abord de celle-ci.',
 ];
 $flash = $flashes[$_GET['msg'] ?? ''] ?? '';
 
@@ -159,6 +196,28 @@ if ($action === 'nouveau' || $action === 'modifier'):
          FROM lots_entree e JOIN types_matiere t ON t.id=e.type_id
          ORDER BY e.date_entree DESC, e.id DESC LIMIT 400'
     )->fetchAll();
+
+    // Fabrications utilisables comme composant (hors le lot lui-même et ceux qui en dépendent)
+    $fabs_dispo = [];
+    if (sources_fab_installe()) {
+        $f = $pdo->query('SELECT id, num_lot, produit, date_fabrication FROM lots_sortie
+                          ORDER BY date_fabrication DESC, id DESC LIMIT 300')->fetchAll();
+        $interdits = $id ? array_flip(array_map(fn($d) => (int)$d['id'], descendants_sortie($id))) : [];
+        foreach ($f as $x) {
+            if ((int)$x['id'] === $id || isset($interdits[(int)$x['id']])) continue;
+            $fabs_dispo[] = $x;
+        }
+    }
+    $sel_fab = [];
+    if (!empty($_POST['source_id'])) {
+        foreach ($_POST['source_id'] as $i => $fid) {
+            if ((int)$fid) $sel_fab[] = ['id' => (int)$fid, 'qte' => $_POST['source_qte'][$i] ?? ''];
+        }
+    } elseif ($s) {
+        foreach (sources_fab_de_sortie($id) as $x) {
+            $sel_fab[] = ['id' => (int)$x['id'], 'qte' => $x['qte_utilisee'] === null ? '' : rtrim(rtrim($x['qte_utilisee'], '0'), '.')];
+        }
+    }
 
     // Sélection en cours (repost, ou édition)
     $sel = [];
@@ -251,6 +310,38 @@ if ($action === 'nouveau' || $action === 'modifier'):
       <span class="material-symbols-outlined">add_circle</span>Ajouter un lot
     </button>
     <p class="text-xs text-on-surface-variant mt-2">La quantité en kg est facultative : elle sert au suivi de consommation des lots d'entrée.</p>
+
+    <?php if ($fabs_dispo || $sel_fab): ?>
+    <!-- Cas minoritaire : replié tant qu'aucune fabrication n'est utilisée -->
+    <details class="mt-4 bg-surface-container-low rounded-xl px-4 py-3" <?= $sel_fab ? 'open' : '' ?>>
+      <summary class="cursor-pointer select-none text-sm font-semibold text-primary flex items-center gap-2">
+        <span class="material-symbols-outlined text-base">layers</span>Utilise aussi une fabrication (sauce, farce, mélange…)
+      </summary>
+      <div id="lignes-fab" class="flex flex-col gap-2 mt-3">
+        <?php foreach ($sel_fab ?: [['id' => 0, 'qte' => '']] as $ligne): ?>
+        <div class="ligne-fab flex gap-2 items-center">
+          <select name="source_id[]" class="flex-1 min-w-0 rounded-xl border-outline-variant text-sm">
+            <option value="">— choisir une fabrication —</option>
+            <?php foreach ($fabs_dispo as $d): ?>
+            <option value="<?= (int)$d['id'] ?>" <?= $ligne['id'] == $d['id'] ? 'selected' : '' ?>>
+              <?= h($d['num_lot']) ?> — <?= h($d['produit']) ?> (<?= fmt_date($d['date_fabrication']) ?>)
+            </option>
+            <?php endforeach ?>
+          </select>
+          <input type="text" inputmode="decimal" name="source_qte[]" placeholder="kg" value="<?= h((string)$ligne['qte']) ?>"
+                 class="w-20 shrink-0 rounded-xl border-outline-variant text-sm">
+          <button type="button" onclick="this.closest('.ligne-fab').remove()" aria-label="Retirer cette fabrication"
+                  class="material-symbols-outlined shrink-0 text-error min-w-[48px] min-h-[48px] rounded-full active:bg-error-container">delete</button>
+        </div>
+        <?php endforeach ?>
+      </div>
+      <button type="button" onclick="(function(){var z=document.getElementById('lignes-fab');var n=z.querySelector('.ligne-fab').cloneNode(true);n.querySelector('select').selectedIndex=0;n.querySelector('input').value='';z.appendChild(n);})()"
+              class="mt-3 min-h-[48px] px-5 rounded-full bg-surface text-primary font-semibold text-sm flex items-center gap-2">
+        <span class="material-symbols-outlined">add_circle</span>Ajouter une fabrication
+      </button>
+      <p class="text-xs text-on-surface-variant mt-2">Les matières premières de cette fabrication restent tracées : inutile de les ressaisir.</p>
+    </details>
+    <?php endif ?>
   </div>
 
   <div class="grid sm:grid-cols-2 gap-4 border-t border-outline-variant pt-4">
@@ -330,6 +421,9 @@ elseif ($action === 'voir' && $id):
     $s = sortie_par_id($id);
     if (!$s) { echo '<p>Fabrication introuvable.</p>'; require __DIR__ . '/includes/footer.php'; exit; }
     $sources = entrees_de_sortie($id);
+    $sources_fab = sources_fab_de_sortie($id);
+    $utilisee_dans = descendants_sortie($id);
+    $racines = $sources_fab ? entrees_racines_de_sortie($id) : [];
 ?>
 <div class="flex items-center gap-3 mb-6">
   <a href="fabrications.php" class="material-symbols-outlined text-on-surface-variant hover:bg-surface-container p-2 rounded-full">arrow_back</a>
@@ -394,6 +488,23 @@ elseif ($action === 'voir' && $id):
 </div>
 <?php endif ?>
 
+<?php if ($sources_fab): ?>
+<h3 class="font-headline-md font-bold mb-3">Fabrications utilisées (<?= count($sources_fab) ?>)</h3>
+<div class="flex flex-col gap-2 mb-6">
+  <?php foreach ($sources_fab as $f): ?>
+  <a href="fabrications.php?action=voir&id=<?= (int)$f['id'] ?>" class="bg-surface rounded-xl border border-outline-variant p-4 flex items-center gap-3 hover:bg-surface-container-low">
+    <span class="material-symbols-outlined text-primary">layers</span>
+    <div class="flex-1 min-w-0">
+      <div class="lot-badge font-bold"><?= h($f['num_lot']) ?></div>
+      <div class="text-sm text-on-surface-variant truncate"><?= h($f['produit']) ?> · <?= fmt_date($f['date_fabrication']) ?></div>
+    </div>
+    <div class="text-sm font-semibold"><?= $f['qte_utilisee'] === null ? '' : fmt_qte((float)$f['qte_utilisee']) ?></div>
+    <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+  </a>
+  <?php endforeach ?>
+</div>
+<?php endif ?>
+
 <h3 class="font-headline-md font-bold mb-3">Lots d'entrée utilisés (<?= count($sources) ?>)</h3>
 <div class="flex flex-col gap-2">
   <?php foreach ($sources as $e): ?>
@@ -408,6 +519,35 @@ elseif ($action === 'voir' && $id):
   </a>
   <?php endforeach ?>
 </div>
+
+<?php if ($sources_fab): ?>
+<h3 class="font-headline-md font-bold mt-6 mb-1">Matières premières d'origine (<?= count($racines) ?>)</h3>
+<p class="text-xs text-on-surface-variant mb-3">Toute la chaîne, y compris ce qui est entré dans les fabrications utilisées.</p>
+<div class="flex flex-wrap gap-2">
+  <?php foreach ($racines as $e): ?>
+  <a href="entrees.php?action=voir&id=<?= (int)$e['id'] ?>" class="flex items-center gap-2 bg-surface rounded-full border border-outline-variant px-3 py-1.5 text-sm hover:bg-surface-container-low">
+    <span class="lot-badge text-xs font-bold text-white px-2 py-0.5 rounded" style="background:<?= h($e['couleur']) ?>"><?= h($e['code']) ?></span>
+    <span class="lot-badge font-semibold"><?= h($e['num_lot']) ?></span>
+  </a>
+  <?php endforeach ?>
+</div>
+<?php endif ?>
+
+<?php if ($utilisee_dans): ?>
+<h3 class="font-headline-md font-bold mt-6 mb-3">Entre dans la composition de (<?= count($utilisee_dans) ?>)</h3>
+<div class="flex flex-col gap-2">
+  <?php foreach ($utilisee_dans as $d): ?>
+  <a href="fabrications.php?action=voir&id=<?= (int)$d['id'] ?>" class="bg-surface rounded-xl border border-outline-variant p-4 flex items-center gap-3 hover:bg-surface-container-low" style="margin-left:<?= ((int)$d['profondeur'] - 1) * 16 ?>px">
+    <span class="material-symbols-outlined text-primary"><?= $d['profondeur'] > 1 ? 'subdirectory_arrow_right' : 'layers' ?></span>
+    <div class="flex-1 min-w-0">
+      <div class="lot-badge font-bold"><?= h($d['num_lot']) ?></div>
+      <div class="text-sm text-on-surface-variant truncate"><?= h($d['produit']) ?> · <?= fmt_date($d['date_fabrication']) ?><?= $d['profondeur'] > 1 ? ' · via ' . h($d['via']) : '' ?></div>
+    </div>
+    <span class="material-symbols-outlined text-on-surface-variant">chevron_right</span>
+  </a>
+  <?php endforeach ?>
+</div>
+<?php endif ?>
 
 <a href="fabrications.php?action=supprimer&id=<?= $id ?>" onclick="return confirm('Supprimer définitivement cette fabrication ?')"
    class="inline-block mt-6 text-sm text-error font-semibold">Supprimer cette fabrication</a>
@@ -458,7 +598,7 @@ else:
         <?php endif ?>
       </div>
       <div class="text-sm truncate"><?= h($f['produit']) ?></div>
-      <div class="text-xs text-on-surface-variant"><?= fmt_date($f['date_fabrication']) ?> · <?= (int)$f['nb_sources'] ?> lot(s) source</div>
+      <div class="text-xs text-on-surface-variant"><?= fmt_date($f['date_fabrication']) ?> · <?= (int)$f['nb_sources'] + nb_sources_fab((int)$f['id']) ?> lot(s) source</div>
     </div>
     <div class="text-right text-sm">
       <div class="font-semibold">
