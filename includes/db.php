@@ -478,7 +478,7 @@ function mention_decoupe(): string {
  */
 function origine_fabrication(int $sortie_id): array {
     $origines = $incomplets = [];
-    foreach (entrees_de_sortie($sortie_id) as $e) {
+    foreach (entrees_racines_de_sortie($sortie_id) as $e) {
         $o = origine_lot($e);
         if (!$o['complet']) { $incomplets[] = $e['num_lot']; continue; }
         $cle = $o['origine'] ?? implode(' / ', $o['lignes']);
@@ -534,6 +534,173 @@ function sorties_de_entree(int $entree_id): array {
          WHERE se.entree_id = ? ORDER BY s.date_fabrication DESC, s.num_lot');
     $q->execute([$entree_id]);
     return $q->fetchAll();
+}
+
+// ============================================================
+//  Fabrications composées (migration 008)
+//
+//  Une fabrication peut utiliser des lots d'entrée ET d'autres
+//  fabrications (sauce marinade -> escalopes marinées). Les liens vers
+//  les fabrications sont dans lots_sortie_sources ; les liens vers les
+//  entrées restent dans lots_sortie_entrees. Tout le parcours est à
+//  l'épreuve des boucles : un registre abîmé ne doit pas figer la page.
+// ============================================================
+const PROFONDEUR_MAX_CHAINE = 20;
+
+function sources_fab_installe(): bool {
+    static $ok = null;
+    if ($ok === null) {
+        try { db()->query('SELECT 1 FROM lots_sortie_sources LIMIT 1'); $ok = true; }
+        catch (PDOException $e) { $ok = false; }
+    }
+    return $ok;
+}
+
+// Les fabrications directement utilisées par une fabrication
+function sources_fab_de_sortie(int $sortie_id): array {
+    if (!sources_fab_installe()) return [];
+    $q = db()->prepare(
+        'SELECT s.*, ss.quantite_kg AS qte_utilisee
+         FROM lots_sortie_sources ss JOIN lots_sortie s ON s.id = ss.source_sortie_id
+         WHERE ss.sortie_id = ? ORDER BY s.date_fabrication DESC, s.num_lot');
+    $q->execute([$sortie_id]);
+    return $q->fetchAll();
+}
+
+// Les fabrications dans lesquelles une fabrication est directement entrée
+function fabs_utilisant_sortie(int $sortie_id): array {
+    if (!sources_fab_installe()) return [];
+    $q = db()->prepare(
+        'SELECT s.*, ss.quantite_kg AS qte_utilisee
+         FROM lots_sortie_sources ss JOIN lots_sortie s ON s.id = ss.sortie_id
+         WHERE ss.source_sortie_id = ? ORDER BY s.date_fabrication DESC, s.num_lot');
+    $q->execute([$sortie_id]);
+    return $q->fetchAll();
+}
+
+function nb_fabs_utilisant_sortie(int $sortie_id): int {
+    if (!sources_fab_installe()) return 0;
+    $q = db()->prepare('SELECT COUNT(*) FROM lots_sortie_sources WHERE source_sortie_id = ?');
+    $q->execute([$sortie_id]);
+    return (int)$q->fetchColumn();
+}
+
+function nb_sources_fab(int $sortie_id): int {
+    if (!sources_fab_installe()) return 0;
+    $q = db()->prepare('SELECT COUNT(*) FROM lots_sortie_sources WHERE sortie_id = ?');
+    $q->execute([$sortie_id]);
+    return (int)$q->fetchColumn();
+}
+
+/** Identifiants de toutes les fabrications en amont (sources, sources des sources…). */
+function ancetres_sortie(int $sortie_id): array {
+    $vus = [];
+    $a_voir = [$sortie_id];
+    for ($n = 0; $a_voir && $n < PROFONDEUR_MAX_CHAINE; $n++) {
+        $suivants = [];
+        foreach ($a_voir as $id) {
+            foreach (sources_fab_de_sortie($id) as $s) {
+                $sid = (int)$s['id'];
+                if (!isset($vus[$sid])) { $vus[$sid] = true; $suivants[] = $sid; }
+            }
+        }
+        $a_voir = $suivants;
+    }
+    return array_keys($vus);
+}
+
+/**
+ * Une fabrication peut-elle en utiliser une autre ? Non si c'est elle-même,
+ * ou si l'autre en dépend déjà (sa sauce ne peut pas contenir son escalope).
+ */
+function source_fab_valide(int $sortie_id, int $source_id): bool {
+    if ($source_id === $sortie_id) return false;
+    return !$sortie_id || !in_array($sortie_id, ancetres_sortie($source_id), true);
+}
+
+/**
+ * Tous les lots d'entrée à l'origine d'une fabrication, directs ou via les
+ * fabrications qu'elle utilise. Sans doublon.
+ */
+function entrees_racines_de_sortie(int $sortie_id): array {
+    $entrees = [];
+    foreach (entrees_de_sortie($sortie_id) as $e) { $entrees[(int)$e['id']] = $e; }
+    foreach (ancetres_sortie($sortie_id) as $aid) {
+        foreach (entrees_de_sortie($aid) as $e) {
+            if (!isset($entrees[(int)$e['id']])) { $entrees[(int)$e['id']] = $e; }
+        }
+    }
+    return array_values($entrees);
+}
+
+/**
+ * L'arbre amont d'une fabrication : ses entrées directes, et pour chaque
+ * fabrication utilisée, son propre arbre. `$chemin` coupe les boucles.
+ *
+ * @return array{entrees: array, fabs: array<int, array{lot: array, qte: ?string, arbre: array}>}
+ */
+function arbre_amont_sortie(int $sortie_id, array $chemin = []): array {
+    $chemin[$sortie_id] = true;
+    $fabs = [];
+    if (count($chemin) <= PROFONDEUR_MAX_CHAINE) {
+        foreach (sources_fab_de_sortie($sortie_id) as $s) {
+            if (isset($chemin[(int)$s['id']])) continue;
+            $fabs[] = ['lot' => $s, 'qte' => $s['qte_utilisee'], 'arbre' => arbre_amont_sortie((int)$s['id'], $chemin)];
+        }
+    }
+    return ['entrees' => entrees_de_sortie($sortie_id), 'fabs' => $fabs];
+}
+
+/**
+ * Toutes les fabrications qui découlent d'une fabrication, directement ou
+ * non. Chaque ligne porte `profondeur` (1 = directe) et `via` (n° du lot
+ * qui l'a utilisée).
+ */
+function descendants_sortie(int $sortie_id): array {
+    $res = [];
+    $vus = [$sortie_id => true];
+    $a_voir = [[$sortie_id, '']];
+    for ($niveau = 1; $a_voir && $niveau <= PROFONDEUR_MAX_CHAINE; $niveau++) {
+        $suivants = [];
+        foreach ($a_voir as [$id, $num]) {
+            foreach (fabs_utilisant_sortie($id) as $s) {
+                $sid = (int)$s['id'];
+                if (isset($vus[$sid])) continue;
+                $vus[$sid] = true;
+                $s['profondeur'] = $niveau;
+                $s['via'] = $num;
+                $res[] = $s;
+                $suivants[] = [$sid, $s['num_lot']];
+            }
+        }
+        $a_voir = $suivants;
+    }
+    return $res;
+}
+
+/**
+ * Toutes les fabrications issues d'un lot d'entrée : celles qui l'utilisent
+ * directement, puis celles qui utilisent ces fabrications, etc. `via` est
+ * vide pour une utilisation directe.
+ */
+function sorties_issues_de_entree(int $entree_id): array {
+    $res = [];
+    $vus = [];
+    foreach (sorties_de_entree($entree_id) as $s) {
+        $s['profondeur'] = 0;
+        $s['via'] = '';
+        $vus[(int)$s['id']] = true;
+        $res[] = $s;
+    }
+    foreach ($res as $directe) {
+        foreach (descendants_sortie((int)$directe['id']) as $d) {
+            if (isset($vus[(int)$d['id']])) continue;
+            $vus[(int)$d['id']] = true;
+            $d['via'] = $d['via'] ?: $directe['num_lot'];
+            $res[] = $d;
+        }
+    }
+    return $res;
 }
 
 // Solde d'un lot d'entrée (si le poids d'entrée est renseigné)

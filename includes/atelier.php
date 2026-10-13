@@ -101,6 +101,7 @@ function lots_ouverts(): array {
     foreach ($lots as &$l) {
         $l['du_jour']  = $l['date_fabrication'] === date('Y-m-d');
         $l['sources']  = entrees_de_sortie((int)$l['id']);
+        $l['fabs']     = sources_fab_de_sortie((int)$l['id']);
         $l['etiq']     = etiquettes_du_lot((int)$l['id']);
         $l['poids_etiq'] = array_sum(array_map(fn($e) => (float)$e['poids_kg'], $l['etiq']));
     }
@@ -118,10 +119,12 @@ function nb_lots_ouverts(): int {
  * demandé — tout le reste se sait à la fin.
  *
  * @param array $liens entree_id => quantité utilisée (kg), ou null
+ * @param array $fabs  fabrication_id => quantité utilisée (kg), ou null :
+ *                     les fabrications (sauce, farce…) qui entrent dans ce lot
  * @return array{id: int, num_lot: string}
  */
 function ouvrir_lot(string $date_fab, string $produit, ?int $produit_id,
-                    array $liens, array $moi, array $defauts = []): array {
+                    array $liens, array $moi, array $defauts = [], array $fabs = []): array {
     $pdo = db();
     $pdo->beginTransaction();
     try {
@@ -148,6 +151,14 @@ function ouvrir_lot(string $date_fab, string $produit, ?int $produit_id,
 
         $ins = $pdo->prepare('INSERT INTO lots_sortie_entrees (sortie_id, entree_id, quantite_kg) VALUES (?,?,?)');
         foreach ($liens as $eid => $q_kg) { $ins->execute([$id, (int)$eid, $q_kg]); }
+
+        if ($fabs) {
+            if (!sources_fab_installe()) {
+                throw new RuntimeException("Migration 008 pas encore appliquée : lancez « Mise à jour de la base ».");
+            }
+            $insf = $pdo->prepare('INSERT INTO lots_sortie_sources (sortie_id, source_sortie_id, quantite_kg) VALUES (?,?,?)');
+            foreach ($fabs as $fid => $q_kg) { $insf->execute([$id, (int)$fid, $q_kg]); }
+        }
 
         $pdo->commit();
         return ['id' => $id, 'num_lot' => $num];
@@ -368,7 +379,7 @@ function lot_par_numero(string $num): ?array {
 function lot_complet(int $id): bool {
     $q = db()->prepare('SELECT COUNT(*) FROM lots_sortie_entrees WHERE sortie_id = ?');
     $q->execute([$id]);
-    return (int)$q->fetchColumn() > 0;
+    return (int)$q->fetchColumn() > 0 || nb_sources_fab($id) > 0;
 }
 
 /**

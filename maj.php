@@ -57,6 +57,7 @@ $attendu = [
     'lots_sortie'         => ['num_lot', 'date_fabrication', 'produit', 'produit_id', 'quantite',
                               'conditionnement', 'conservation'],
     'lots_sortie_entrees' => ['sortie_id', 'entree_id', 'quantite_kg'],
+    'lots_sortie_sources' => ['sortie_id', 'source_sortie_id', 'quantite_kg'],
     'reglages'            => ['cle', 'valeur'],
     'produits'            => ['plu', 'ean13', 'libelle', 'classe_traca', 'dlc_jours'],
     'recette_lignes'      => ['produit_id', 'libelle', 'quantite', 'unite', 'nature', 'bio', 'ordre'],
