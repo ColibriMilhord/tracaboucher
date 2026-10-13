@@ -393,6 +393,7 @@
 
     if (!lots.length) return;
 
+    var nbFabs = lots.filter(function (l) { return l.kind === 's'; }).length;
     var overlay = construireOverlay();
     document.body.appendChild(overlay.racine);
     var cibleCourante = null;
@@ -412,12 +413,12 @@
       function rafraichir() {
         var v = select.value;
         if (!v) {
-          bouton.innerHTML = '<span class="text-on-surface-variant">Choisir un lot d\'entrée…</span>';
+          bouton.innerHTML = '<span class="text-on-surface-variant">Choisir un lot…</span>';
           return;
         }
         var l = lots.filter(function (x) { return String(x.id) === String(v); })[0];
         bouton.innerHTML = l
-          ? '<span class="lot-badge font-bold">' + echapper(l.num) + '</span>' +
+          ? '<span class="lot-badge font-bold">' + (l.kind === 's' ? '<span class="material-symbols-outlined text-base align-middle mr-1">layers</span>' : '') + echapper(l.num) + '</span>' +
             '<span class="block text-xs text-on-surface-variant">' +
             echapper(l.type) + ' · ' + echapper(l.fourn) + '</span>'
           : echapper(select.options[select.selectedIndex].text);
@@ -440,18 +441,40 @@
           '<input type="search" data-recherche placeholder="N° de lot, type, fournisseur…" ' +
                  'class="flex-1 rounded-full border-outline-variant text-base">' +
         '</div>' +
+        (nbFabs ?
+        '<div class="flex gap-2 p-3 pb-0">' +
+          '<button type="button" data-onglet="e" class="flex-1 rounded-full py-2 text-sm font-semibold border-2">Lots d\'entrée</button>' +
+          '<button type="button" data-onglet="s" class="flex-1 rounded-full py-2 text-sm font-semibold border-2">Fabrications</button>' +
+        '</div>' : '') +
         '<div data-liste class="flex-1 overflow-y-auto p-3 flex flex-col gap-2"></div>';
 
       var liste     = racine.querySelector('[data-liste]');
       var recherche = racine.querySelector('[data-recherche]');
+      var onglet    = 'e';
+      function peindreOnglets() {
+        racine.querySelectorAll('[data-onglet]').forEach(function (o) {
+          var actif = o.getAttribute('data-onglet') === onglet;
+          o.classList.toggle('border-primary', actif);
+          o.classList.toggle('bg-primary-container', actif);
+          o.classList.toggle('border-outline-variant', !actif);
+        });
+      }
+      racine.querySelectorAll('[data-onglet]').forEach(function (o) {
+        o.addEventListener('click', function () {
+          onglet = o.getAttribute('data-onglet');
+          peindreOnglets();
+          dessiner();
+        });
+      });
 
       function dessiner() {
         var q = recherche.value.trim().toLowerCase();
+        var dansOnglet = lots.filter(function (l) { return (l.kind || 'e') === onglet; });
         var vus = q
-          ? lots.filter(function (l) {
+          ? dansOnglet.filter(function (l) {
               return (l.num + ' ' + l.type + ' ' + l.fourn).toLowerCase().indexOf(q) !== -1;
             })
-          : lots;
+          : dansOnglet;
         liste.innerHTML = '';
         if (!vus.length) {
           liste.innerHTML = '<p class="text-sm text-on-surface-variant text-center py-8">Aucun lot ne correspond.</p>';
@@ -477,6 +500,8 @@
       }
       function ouvrir() {
         recherche.value = '';
+        onglet = 'e';
+        peindreOnglets();
         dessiner();
         racine.classList.remove('hidden');
         document.body.style.overflow = 'hidden';
@@ -521,7 +546,7 @@
         dlc.value = d.getFullYear() + '-' +
                     String(d.getMonth() + 1).padStart(2, '0') + '-' +
                     String(d.getDate()).padStart(2, '0');
-        var repli = form.querySelector('details');
+        var repli = dlc.closest('details');
         if (repli) repli.open = true;   // le champ est dans les options repliées
       }
       cocher(form, 'conditionnement', p.cond);
