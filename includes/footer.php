@@ -16,6 +16,6 @@
   <?php endforeach ?>
 </nav>
 
-<script src="app.js"></script>
+<script src="app.js?v=<?= h(version_app()) ?>"></script>
 
 </body></html>
