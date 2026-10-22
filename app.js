@@ -421,7 +421,7 @@
           ? '<span class="lot-badge font-bold">' + (l.kind === 's' ? '<span class="material-symbols-outlined text-base align-middle mr-1">layers</span>' : '') + echapper(l.num) + '</span>' +
             '<span class="block text-xs text-on-surface-variant">' +
             echapper(l.type) + ' · ' + echapper(l.fourn) + '</span>' +
-            (l.notes ? '<span class="block text-xs text-on-surface-variant truncate">' + echapper(l.notes) + '</span>' : '')
+            (l.notes ? '<span class="block text-xs font-semibold truncate" style="color:#b45309">' + echapper(l.notes) + '</span>' : '')
           : echapper(select.options[select.selectedIndex].text);
       }
       bouton.addEventListener('click', function () {
@@ -489,7 +489,7 @@
           b.innerHTML = '<span class="lot-badge font-bold text-primary">' + echapper(l.num) + '</span>' +
                         '<span class="block text-xs text-on-surface-variant">' +
                         echapper(l.type) + ' · ' + echapper(l.fourn) + ' · ' + echapper(l.date) + '</span>' +
-                        (l.notes ? '<span class="block text-xs text-on-surface-variant">' + echapper(l.notes) + '</span>' : '');
+                        (l.notes ? '<span class="block text-xs font-semibold" style="color:#b45309">' + echapper(l.notes) + '</span>' : '');
           b.addEventListener('click', function () {
             if (cibleCourante) {
               cibleCourante.select.value = String(l.id);
