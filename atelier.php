@@ -248,7 +248,7 @@ if ($ouvert_a_afficher):
             <span class="block text-xs text-on-surface-variant truncate">
               <?= h($e['type_libelle']) ?> · <?= h($e['fournisseur']) ?> · <?= fmt_date($e['date_entree']) ?>
             </span>
-            <?php if (!empty($e['notes'])): ?><span class="block text-xs text-on-surface-variant truncate"><?= h($e['notes']) ?></span><?php endif ?>
+            <?php if (!empty($e['notes'])): ?><span class="block text-xs font-semibold truncate" style="color:#b45309"><?= h($e['notes']) ?></span><?php endif ?>
           </span>
         </label>
         <?php endforeach ?>

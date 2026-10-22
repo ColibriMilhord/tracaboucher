@@ -427,6 +427,7 @@ else:
     <div class="flex-1 min-w-0">
       <div class="lot-badge font-bold"><?= h($l['num_lot']) ?></div>
       <div class="text-sm text-on-surface-variant truncate"><?= h($l['fournisseur']) ?> · <?= fmt_date($l['date_entree']) ?></div>
+      <?php if (!empty($l['notes'])): ?><div class="text-sm font-semibold truncate" style="color:#b45309"><?= h($l['notes']) ?></div><?php endif ?>
     </div>
     <div class="text-right text-sm">
       <div class="font-semibold"><?= $l['poids_kg'] === null ? '—' : fmt_qte((float)$l['poids_kg']) ?></div>
