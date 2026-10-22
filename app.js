@@ -420,7 +420,8 @@
         bouton.innerHTML = l
           ? '<span class="lot-badge font-bold">' + (l.kind === 's' ? '<span class="material-symbols-outlined text-base align-middle mr-1">layers</span>' : '') + echapper(l.num) + '</span>' +
             '<span class="block text-xs text-on-surface-variant">' +
-            echapper(l.type) + ' · ' + echapper(l.fourn) + '</span>'
+            echapper(l.type) + ' · ' + echapper(l.fourn) + '</span>' +
+            (l.notes ? '<span class="block text-xs text-on-surface-variant truncate">' + echapper(l.notes) + '</span>' : '')
           : echapper(select.options[select.selectedIndex].text);
       }
       bouton.addEventListener('click', function () {
@@ -438,7 +439,7 @@
       racine.innerHTML =
         '<div class="flex items-center gap-2 p-3 border-b border-outline-variant">' +
           '<button type="button" data-fermer class="material-symbols-outlined p-2 rounded-full active:bg-surface-container">close</button>' +
-          '<input type="search" data-recherche placeholder="N° de lot, type, fournisseur…" ' +
+          '<input type="search" data-recherche placeholder="N° de lot, type, fournisseur, notes…" ' +
                  'class="flex-1 rounded-full border-outline-variant text-base">' +
         '</div>' +
         (nbFabs ?
@@ -472,7 +473,7 @@
         var dansOnglet = lots.filter(function (l) { return (l.kind || 'e') === onglet; });
         var vus = q
           ? dansOnglet.filter(function (l) {
-              return (l.num + ' ' + l.type + ' ' + l.fourn).toLowerCase().indexOf(q) !== -1;
+              return (l.num + ' ' + l.type + ' ' + l.fourn + ' ' + (l.notes || '')).toLowerCase().indexOf(q) !== -1;
             })
           : dansOnglet;
         liste.innerHTML = '';
@@ -487,7 +488,8 @@
                         'active:bg-surface-container-low';
           b.innerHTML = '<span class="lot-badge font-bold text-primary">' + echapper(l.num) + '</span>' +
                         '<span class="block text-xs text-on-surface-variant">' +
-                        echapper(l.type) + ' · ' + echapper(l.fourn) + ' · ' + echapper(l.date) + '</span>';
+                        echapper(l.type) + ' · ' + echapper(l.fourn) + ' · ' + echapper(l.date) + '</span>' +
+                        (l.notes ? '<span class="block text-xs text-on-surface-variant">' + echapper(l.notes) + '</span>' : '');
           b.addEventListener('click', function () {
             if (cibleCourante) {
               cibleCourante.select.value = String(l.id);

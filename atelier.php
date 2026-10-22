@@ -138,7 +138,7 @@ if (referentiel_produits_pret()) {
 // Lots d'entrée encore disponibles, le plus ancien d'abord : on écoule
 // la matière dans l'ordre où elle est arrivée.
 $entrees = $pdo->query(
-    'SELECT e.id, e.num_lot, e.date_entree, e.fournisseur, t.libelle AS type_libelle
+    'SELECT e.id, e.num_lot, e.date_entree, e.fournisseur, e.notes, t.libelle AS type_libelle
        FROM lots_entree e JOIN types_matiere t ON t.id = e.type_id
       ORDER BY e.date_entree DESC, e.id DESC LIMIT 40'
 )->fetchAll();
@@ -248,6 +248,7 @@ if ($ouvert_a_afficher):
             <span class="block text-xs text-on-surface-variant truncate">
               <?= h($e['type_libelle']) ?> · <?= h($e['fournisseur']) ?> · <?= fmt_date($e['date_entree']) ?>
             </span>
+            <?php if (!empty($e['notes'])): ?><span class="block text-xs text-on-surface-variant truncate"><?= h($e['notes']) ?></span><?php endif ?>
           </span>
         </label>
         <?php endforeach ?>

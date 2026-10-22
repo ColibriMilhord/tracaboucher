@@ -190,7 +190,7 @@ if ($action === 'nouveau' || $action === 'modifier'):
 
     // Lots d'entrée disponibles pour le sélecteur
     $dispo = $pdo->query(
-        'SELECT e.id, e.num_lot, e.date_entree, e.fournisseur, t.code, t.libelle AS type_libelle
+        'SELECT e.id, e.num_lot, e.date_entree, e.fournisseur, e.notes, t.code, t.libelle AS type_libelle
          FROM lots_entree e JOIN types_matiere t ON t.id=e.type_id
          ORDER BY e.date_entree DESC, e.id DESC LIMIT 400'
     )->fetchAll();
@@ -277,7 +277,8 @@ if ($action === 'nouveau' || $action === 'modifier'):
     <script type="application/json" id="lots-dispo"><?= json_encode(array_merge(
         array_map(function ($d) {
             return ['id' => (string)(int)$d['id'], 'kind' => 'e', 'num' => $d['num_lot'], 'type' => $d['type_libelle'],
-                    'fourn' => $d['fournisseur'], 'date' => fmt_date($d['date_entree'])];
+                    'fourn' => $d['fournisseur'], 'date' => fmt_date($d['date_entree']),
+                    'notes' => (string)($d['notes'] ?? '')];
         }, $dispo),
         array_map(function ($d) {
             return ['id' => 's' . (int)$d['id'], 'kind' => 's', 'num' => $d['num_lot'], 'type' => 'Fabrication',
@@ -292,7 +293,7 @@ if ($action === 'nouveau' || $action === 'modifier'):
           <optgroup label="Lots d'entrée">
           <?php foreach ($dispo as $d): ?>
           <option value="<?= (int)$d['id'] ?>" <?= (string)$ligne['id'] === (string)(int)$d['id'] ? 'selected' : '' ?>>
-            <?= h($d['num_lot']) ?> — <?= h($d['type_libelle']) ?> — <?= h($d['fournisseur']) ?> (<?= fmt_date($d['date_entree']) ?>)
+            <?= h($d['num_lot']) ?> — <?= h($d['type_libelle']) ?> — <?= h($d['fournisseur']) ?> (<?= fmt_date($d['date_entree']) ?>)<?= !empty($d['notes']) ? ' — ' . h($d['notes']) : '' ?>
           </option>
           <?php endforeach ?>
           </optgroup>
